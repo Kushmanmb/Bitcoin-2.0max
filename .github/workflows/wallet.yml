@@ -1,0 +1,74 @@
+name: Wallet CI
+
+# Run whenever wallet-related files change or the workflow itself is updated.
+on:
+  push:
+    branches: [ "**" ]
+    paths:
+      - 'include/bitcoin2max/wallet.h'
+      - 'src/tools/wallet_demo.cpp'
+      - 'tests/test_wallet.cpp'
+      - 'CMakeLists.txt'
+      - '.github/workflows/wallet.yml'
+  pull_request:
+    branches: [ "**" ]
+    paths:
+      - 'include/bitcoin2max/wallet.h'
+      - 'src/tools/wallet_demo.cpp'
+      - 'tests/test_wallet.cpp'
+      - 'CMakeLists.txt'
+      - '.github/workflows/wallet.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  wallet-ci:
+    name: Wallet CI — build, add Bitcoin & test
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ libssl-dev libboost-system-dev
+
+      # ── Build ──────────────────────────────────────────────────────────────
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTS=ON \
+            -DBUILD_WALLET_DEMO=ON \
+            -DENABLE_ELECTRUM=ON
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      # ── Add Bitcoin to wallet ──────────────────────────────────────────────
+      - name: Add Bitcoin to wallet
+        run: |
+          echo "=== Running wallet demo: creating wallet and adding 1 000 BTC ==="
+          ./build/wallet_demo
+
+      # ── Wallet unit tests ──────────────────────────────────────────────────
+      - name: Run wallet unit tests
+        run: |
+          ./build/tests/bitcoin2max_tests "[wallet]" --reporter console --success
+
+      # ── Upload results on failure ──────────────────────────────────────────
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wallet-test-results
+          path: build/Testing/

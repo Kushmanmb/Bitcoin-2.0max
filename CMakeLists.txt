@@ -20,6 +20,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
 
 # ── Options ───────────────────────────────────────────────────────────────────
 option(BUILD_TESTS          "Build unit tests"                  ON)
+option(BUILD_WALLET_DEMO    "Build wallet demo tool"            ON)
 option(ENABLE_ELECTRUM      "Enable built-in Electrum client"   ON)
 option(ENABLE_TOR           "Route Electrum traffic over Tor"   OFF)
 
@@ -82,6 +83,21 @@ install(FILES conf/bitcoin2max.conf
     DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/bitcoin2max
 )
 
+# ── Wallet demo tool ──────────────────────────────────────────────────────────
+if(BUILD_WALLET_DEMO)
+    add_executable(wallet_demo src/tools/wallet_demo.cpp)
+
+    target_include_directories(wallet_demo
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+    )
+
+    target_link_libraries(wallet_demo
+        PRIVATE
+            Threads::Threads
+    )
+endif()
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 if(BUILD_TESTS)
     enable_testing()
@@ -95,4 +111,5 @@ message(STATUS "  Build type      : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  Electrum client : ${ENABLE_ELECTRUM}")
 message(STATUS "  Tor routing     : ${ENABLE_TOR}")
 message(STATUS "  Tests           : ${BUILD_TESTS}")
+message(STATUS "  Wallet demo     : ${BUILD_WALLET_DEMO}")
 message(STATUS "------------------------------------------------------------")
