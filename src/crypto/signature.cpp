@@ -98,9 +98,13 @@ static void appendVarint(std::vector<uint8_t>& buf, size_t n) {
         buf.push_back(0xFD);
         buf.push_back(static_cast<uint8_t>(n & 0xFF));
         buf.push_back(static_cast<uint8_t>((n >> 8) & 0xFF));
-    } else {
+    } else if (n <= 0xFFFFFFFF) {
         buf.push_back(0xFE);
         for (int i = 0; i < 4; ++i)
+            buf.push_back(static_cast<uint8_t>((n >> (8 * i)) & 0xFF));
+    } else {
+        buf.push_back(0xFF);
+        for (int i = 0; i < 8; ++i)
             buf.push_back(static_cast<uint8_t>((n >> (8 * i)) & 0xFF));
     }
 }
@@ -286,7 +290,7 @@ SignatureInfo parseSignature(const std::string& sigBase64) {
 
     info.valid      = true;
     info.compressed = (header >= 31);
-    info.recoveryId = (header - 27) & 3;
+    info.recoveryId = info.compressed ? (header - 31) : (header - 27);
     info.r.assign(bytes.begin() + 1,  bytes.begin() + 33);
     info.s.assign(bytes.begin() + 33, bytes.end());
     return info;

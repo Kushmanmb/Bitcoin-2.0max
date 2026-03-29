@@ -226,9 +226,9 @@ TEST_CASE("parseSignature: rejects empty string", "[signature]") {
 }
 
 TEST_CASE("parseSignature: rejects wrong-length input", "[signature]") {
-    // 64 bytes of zeros base64-encoded is not 65 bytes
-    std::string short64 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-    REQUIRE_FALSE(parseSignature(short64).valid);
+    // A base64 string that decodes to fewer than 65 bytes
+    std::string wrongLengthSig = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    REQUIRE_FALSE(parseSignature(wrongLengthSig).valid);
 }
 
 TEST_CASE("parseSignature: rejects invalid header byte", "[signature]") {
