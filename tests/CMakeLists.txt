@@ -12,6 +12,7 @@ FetchContent_MakeAvailable(Catch2)
 # ── Test sources ─────────────────────────────────────────────────────────────
 add_executable(bitcoin2max_tests
     test_config.cpp
+    test_elliptic_curve.cpp
     test_params.cpp
     test_signature.cpp
     test_wallet.cpp
@@ -35,6 +36,7 @@ target_link_libraries(bitcoin2max_tests
 target_sources(bitcoin2max_tests
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src/config/config.cpp
+        ${CMAKE_SOURCE_DIR}/src/crypto/elliptic_curve.cpp
         ${CMAKE_SOURCE_DIR}/src/crypto/signature.cpp
 )
 
