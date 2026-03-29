@@ -1,0 +1,127 @@
+// src/node/node.cpp
+//
+// Bitcoin 2.0max node implementation.
+// Runs independently — does NOT depend on BOLDwallet.  Wallet functionality
+// is provided externally via the Electrum protocol on 127.0.0.1:9050.
+
+#include "node.h"
+
+#include "bitcoin2max/params.h"
+#include "../electrum/electrum_client.h"
+
+#include <chrono>
+#include <iostream>
+#include <thread>
+
+namespace bitcoin2max {
+
+// ── ctor / dtor ───────────────────────────────────────────────────────────────
+
+Node::Node(const Config& cfg) : cfg_(cfg) {}
+
+Node::~Node() {
+    stop();
+    join();
+}
+
+// ── public interface ──────────────────────────────────────────────────────────
+
+void Node::start() {
+    if (running_.load()) return;
+
+    logBanner();
+    running_.store(true);
+
+    if (cfg_.electrum_enabled) {
+        connectToElectrum();
+    }
+
+    // Start the main loop in a background thread.
+    std::thread([this] { mainLoop(); }).detach();
+}
+
+void Node::stop() {
+    running_.store(false);
+    if (electrum_) electrum_->disconnect();
+}
+
+void Node::join() {
+    // Poll until main loop exits.  A production implementation would use
+    // condition variables; this is kept simple for clarity.
+    while (running_.load()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
+
+// ── private helpers ───────────────────────────────────────────────────────────
+
+void Node::logBanner() const {
+    std::cout << "\n"
+              << "  ██████╗ ██╗████████╗ ██████╗ ██████╗ ██╗███╗  ██╗   ██████╗  ██████╗ \n"
+              << "  ██╔══██╗██║╚══██╔══╝██╔════╝██╔═══██╗██║████╗ ██║  ╚════██╗ ██╔═████╗\n"
+              << "  ██████╔╝██║   ██║   ██║     ██║   ██║██║██╔██╗██║   █████╔╝ ██║██╔██║\n"
+              << "  ██╔══██╗██║   ██║   ██║     ██║   ██║██║██║╚████║  ██╔═══╝  ████╔╝██║\n"
+              << "  ██████╔╝██║   ██║   ╚██████╗╚██████╔╝██║██║ ╚███║  ███████╗ ╚██████╔╝\n"
+              << "  ╚═════╝ ╚═╝   ╚═╝    ╚═════╝ ╚═════╝ ╚═╝╚═╝  ╚══╝  ╚══════╝  ╚═════╝ \n"
+              << "  Bitcoin 2.0max  —  supercharged block speed & scalability\n"
+              << "  Block target  : " << cfg_.target_block_time << " seconds\n"
+              << "  Max block size: " << cfg_.max_block_size / (1024*1024) << " MiB\n"
+              << "  P2P port      : " << cfg_.p2p_port << "\n"
+              << "  RPC port      : " << cfg_.rpc_port << "\n"
+              << "  Electrum      : "
+              << (cfg_.electrum_enabled
+                      ? cfg_.electrum_host + ":" + std::to_string(cfg_.electrum_port)
+                      : "disabled")
+              << "\n\n";
+}
+
+void Node::connectToElectrum() {
+    electrum_ = std::make_unique<ElectrumClient>(cfg_);
+
+    uint32_t attempts = 0;
+    while (attempts < electrum::MAX_RECONNECT_ATTEMPTS) {
+        if (electrum_->connect()) {
+            auto ver = electrum_->serverVersion();
+            std::cout << "[Node] Electrum server version: " << ver << "\n";
+            break;
+        }
+        ++attempts;
+        std::cerr << "[Node] Electrum connect attempt " << attempts
+                  << " failed; retrying in 5 s…\n";
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
+
+    if (!electrum_->isConnected()) {
+        std::cerr << "[Node] WARNING: Could not connect to Electrum server at "
+                  << cfg_.electrum_host << ":" << cfg_.electrum_port
+                  << ".  Running without wallet relay.\n";
+    }
+}
+
+void Node::mainLoop() {
+    std::cout << "[Node] Main loop started.\n";
+
+    while (running_.load()) {
+        // In a full implementation this loop drives:
+        //  - P2P message dispatch
+        //  - Block download & validation
+        //  - Mempool management
+        //  - Electrum subscription updates
+
+        if (electrum_ && electrum_->isConnected()) {
+            auto header = electrum_->getBestBlockHeader();
+            if (!header.empty()) {
+                bestHeight_.fetch_add(0); // placeholder — parse real height
+                // std::cout << "[Node] Best header: " << header << "\n";
+            }
+        }
+
+        std::this_thread::sleep_for(
+            std::chrono::seconds(cfg_.target_block_time));
+    }
+
+    std::cout << "[Node] Main loop stopped.\n";
+    running_.store(false);
+}
+
+} // namespace bitcoin2max
