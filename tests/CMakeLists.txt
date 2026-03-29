@@ -14,6 +14,7 @@ add_executable(bitcoin2max_tests
     test_config.cpp
     test_params.cpp
     test_signature.cpp
+    test_wallet.cpp
 )
 
 target_include_directories(bitcoin2max_tests
