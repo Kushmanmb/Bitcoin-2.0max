@@ -1,0 +1,38 @@
+# CODEOWNERS
+#
+# Each line is a file pattern followed by one or more owners.
+# Order matters — the last matching pattern takes highest precedence.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# ── Global fallback ────────────────────────────────────────────────────────────
+*                           @Kushmanmb
+
+# ── Core node logic ────────────────────────────────────────────────────────────
+src/node/                   @Kushmanmb
+include/bitcoin2max/        @Kushmanmb
+
+# ── Cryptography ───────────────────────────────────────────────────────────────
+src/crypto/                 @Kushmanmb
+
+# ── Electrum client ────────────────────────────────────────────────────────────
+src/electrum/               @Kushmanmb
+
+# ── Configuration ──────────────────────────────────────────────────────────────
+src/config/                 @Kushmanmb
+conf/                       @Kushmanmb
+
+# ── Build system ───────────────────────────────────────────────────────────────
+CMakeLists.txt              @Kushmanmb
+cmake/                      @Kushmanmb
+Dockerfile                  @Kushmanmb
+
+# ── CI / GitHub Actions ────────────────────────────────────────────────────────
+.github/workflows/          @Kushmanmb
+.github/CODEOWNERS          @Kushmanmb
+
+# ── Tests ──────────────────────────────────────────────────────────────────────
+tests/                      @Kushmanmb
+
+# ── Documentation ──────────────────────────────────────────────────────────────
+*.md                        @Kushmanmb
+docs/                       @Kushmanmb

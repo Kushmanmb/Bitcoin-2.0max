@@ -1,20 +1,96 @@
-# Build output
+# ── Build output ──────────────────────────────────────────────────────────────
 build/
 cmake-build-*/
 CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+_deps/
 
-# Compiled objects
+# ── Compiled objects & libraries ──────────────────────────────────────────────
 *.o
 *.a
 *.so
+*.so.*
 *.dylib
+*.dll
+*.exe
 
-# Editor/IDE
+# ── Editor / IDE ──────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+*.orig
+.project
+.cproject
+.settings/
+*.sublime-project
+*.sublime-workspace
 
-# macOS
+# ── macOS ─────────────────────────────────────────────────────────────────────
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Windows ───────────────────────────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── Sensitive data — NEVER commit these ───────────────────────────────────────
+# Private keys, wallets, and secrets
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+wallet.dat
+*.wallet
+*.seed
+*.mnemonic
+
+# Environment / secrets files
+.env
+.env.*
+!.env.example
+*.secret
+secrets.yml
+secrets.yaml
+secrets.json
+config/secrets.*
+
+# Node API tokens and credentials
+api_key.txt
+api_keys.txt
+credentials.json
+token.txt
+auth.json
+
+# ── Runtime data ──────────────────────────────────────────────────────────────
+# Node data directory (contains chain state, peer data, etc.)
+.bitcoin2max/
+data/
+*.log
+*.pid
+
+# ── Distribution / packaging ──────────────────────────────────────────────────
+dist/
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.zip
+*.deb
+*.rpm
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+.dockerignore
+
+# ── Temporary files ───────────────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.bak
+*.cache
