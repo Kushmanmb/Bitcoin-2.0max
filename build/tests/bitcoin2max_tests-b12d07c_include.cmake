@@ -1,5 +1,0 @@
-if(EXISTS "/home/runner/work/Bitcoin-2.0max/Bitcoin-2.0max/build/tests/bitcoin2max_tests-b12d07c_tests.cmake")
-  include("/home/runner/work/Bitcoin-2.0max/Bitcoin-2.0max/build/tests/bitcoin2max_tests-b12d07c_tests.cmake")
-else()
-  add_test(bitcoin2max_tests_NOT_BUILT-b12d07c bitcoin2max_tests_NOT_BUILT-b12d07c)
-endif()
