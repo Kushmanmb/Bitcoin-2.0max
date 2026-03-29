@@ -13,6 +13,7 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(bitcoin2max_tests
     test_config.cpp
     test_params.cpp
+    test_signature.cpp
 )
 
 target_include_directories(bitcoin2max_tests
@@ -33,6 +34,7 @@ target_link_libraries(bitcoin2max_tests
 target_sources(bitcoin2max_tests
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src/config/config.cpp
+        ${CMAKE_SOURCE_DIR}/src/crypto/signature.cpp
 )
 
 include(CTest)

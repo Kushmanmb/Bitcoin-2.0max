@@ -1,0 +1,20 @@
+# Build output
+build/
+cmake-build-*/
+CMakeFiles/
+
+# Compiled objects
+*.o
+*.a
+*.so
+*.dylib
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
