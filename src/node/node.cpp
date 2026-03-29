@@ -8,8 +8,17 @@
 
 #include "bitcoin2max/params.h"
 #include "../electrum/electrum_client.h"
+#include "../net/peer.h"
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include <cerrno>
 #include <chrono>
+#include <cstring>
 #include <iostream>
 #include <thread>
 
@@ -36,6 +45,11 @@ void Node::start() {
         connectToElectrum();
     }
 
+    // Start the P2P listen socket and accept loop.
+    if (startListening()) {
+        std::thread([this] { acceptLoop(); }).detach();
+    }
+
     // Start the main loop in a background thread.
     std::thread([this] { mainLoop(); }).detach();
 }
@@ -43,6 +57,10 @@ void Node::start() {
 void Node::stop() {
     running_.store(false);
     if (electrum_) electrum_->disconnect();
+    if (listenFd_ >= 0) {
+        ::close(listenFd_);
+        listenFd_ = -1;
+    }
 }
 
 void Node::join() {
@@ -122,6 +140,97 @@ void Node::mainLoop() {
 
     std::cout << "[Node] Main loop stopped.\n";
     running_.store(false);
+}
+
+// ── peerCount ─────────────────────────────────────────────────────────────────
+
+size_t Node::peerCount() const {
+    std::lock_guard<std::mutex> lk(peersMutex_);
+    return peers_.size();
+}
+
+// ── startListening ────────────────────────────────────────────────────────────
+
+bool Node::startListening() {
+    listenFd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (listenFd_ < 0) {
+        std::cerr << "[Node] socket(): " << std::strerror(errno) << "\n";
+        return false;
+    }
+
+    int opt = 1;
+    ::setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    sockaddr_in addr{};
+    addr.sin_family      = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port        = htons(cfg_.p2p_port);
+
+    if (::bind(listenFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
+        std::cerr << "[Node] bind() on port " << cfg_.p2p_port
+                  << ": " << std::strerror(errno) << "\n";
+        ::close(listenFd_);
+        listenFd_ = -1;
+        return false;
+    }
+
+    if (::listen(listenFd_, network::LISTEN_BACKLOG) < 0) {
+        std::cerr << "[Node] listen(): " << std::strerror(errno) << "\n";
+        ::close(listenFd_);
+        listenFd_ = -1;
+        return false;
+    }
+
+    std::cout << "[Node] Listening for peers on port " << cfg_.p2p_port << "\n";
+    return true;
+}
+
+// ── acceptLoop ────────────────────────────────────────────────────────────────
+
+void Node::acceptLoop() {
+    while (running_.load()) {
+        if (listenFd_ < 0) break;
+
+        // Use select() with a 1-second timeout so we can check running_ and
+        // react to stop() closing listenFd_.
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(listenFd_, &rfds);
+        timeval tv{1, 0};
+
+        int r = ::select(listenFd_ + 1, &rfds, nullptr, nullptr, &tv);
+        if (r <= 0) continue;
+
+        sockaddr_in peerAddr{};
+        socklen_t   addrLen = sizeof(peerAddr);
+        int peerFd = ::accept(listenFd_,
+                              reinterpret_cast<sockaddr*>(&peerAddr),
+                              &addrLen);
+        if (peerFd < 0) {
+            if (running_.load())
+                std::cerr << "[Node] accept(): " << std::strerror(errno) << "\n";
+            continue;
+        }
+
+        char ipStr[INET_ADDRSTRLEN] = {};
+        ::inet_ntop(AF_INET, &peerAddr.sin_addr, ipStr, sizeof(ipStr));
+        std::cout << "[Node] Accepted connection from " << ipStr
+                  << ":" << ntohs(peerAddr.sin_port) << "\n";
+
+        // Perform the handshake in a detached thread so the accept loop keeps
+        // running while we wait for the remote's messages.
+        int32_t  height  = static_cast<int32_t>(bestHeight_.load());
+        uint16_t ourPort = cfg_.p2p_port;
+        std::thread([this, peerFd, height, ourPort]() {
+            auto peer = std::make_unique<net::Peer>(peerFd, /*outbound=*/false);
+            if (peer->doHandshake(height, ourPort)) {
+                std::lock_guard<std::mutex> lk(peersMutex_);
+                peers_.push_back(std::move(peer));
+            }
+        }).detach();
+    }
+
+    std::cout << "[Node] Accept loop stopped.\n";
 }
 
 } // namespace bitcoin2max

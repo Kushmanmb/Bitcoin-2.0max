@@ -33,6 +33,24 @@ static constexpr uint16_t DEFAULT_P2P_PORT = 8333;
 /// Default port for the RPC interface.
 static constexpr uint16_t DEFAULT_RPC_PORT = 8332;
 
+/// Network magic bytes that prefix every P2P message ("B2MX").
+static constexpr uint32_t MAGIC = 0x42324D58u;
+
+/// P2P protocol version advertised to peers.
+static constexpr int32_t PROTOCOL_VERSION = 70015;
+
+/// User-agent string sent in the version message.
+static constexpr const char* USER_AGENT = "/Bitcoin2Max:2.0.0/";
+
+/// Service bit: NODE_NETWORK — the node has a full copy of the block chain.
+static constexpr uint64_t NODE_NETWORK = 1ULL;
+
+/// Maximum allowed payload size for any single P2P message (bytes).
+static constexpr uint32_t MAX_MESSAGE_PAYLOAD = 32u * 1024u * 1024u;
+
+/// Listen backlog passed to ::listen() on the P2P accept socket.
+static constexpr int LISTEN_BACKLOG = 8;
+
 } // namespace network
 
 namespace electrum {

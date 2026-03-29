@@ -39,6 +39,8 @@ set(BITCOIN2MAX_SOURCES
     src/node/node.cpp
     src/electrum/electrum_client.cpp
     src/crypto/signature.cpp
+    src/net/message.cpp
+    src/net/peer.cpp
 )
 
 # ── Executable ────────────────────────────────────────────────────────────────
