@@ -1,0 +1,38 @@
+# Labeler configuration
+# Maps labels to file glob patterns
+
+"area: core":
+  - src/node/**
+  - include/bitcoin2max/**
+
+"area: crypto":
+  - src/crypto/**
+
+"area: electrum":
+  - src/electrum/**
+
+"area: config":
+  - src/config/**
+  - conf/**
+
+"area: build":
+  - CMakeLists.txt
+  - cmake/**
+  - Dockerfile
+  - "**/*.cmake"
+
+"area: tests":
+  - tests/**
+
+"area: ci":
+  - .github/workflows/**
+
+"area: docs":
+  - "*.md"
+  - docs/**
+  - .github/ISSUE_TEMPLATE/**
+  - .github/PULL_REQUEST_TEMPLATE.md
+
+"area: packaging":
+  - .github/workflows/release.yml
+  - Dockerfile

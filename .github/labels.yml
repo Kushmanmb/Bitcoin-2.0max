@@ -1,0 +1,114 @@
+# GitHub Labels
+# Used by actions/github-script or label-sync to manage repository labels.
+
+- name: bug
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: enhancement
+  color: "a2eeef"
+  description: "New feature or request"
+
+- name: documentation
+  color: "0075ca"
+  description: "Improvements or additions to documentation"
+
+- name: security
+  color: "e4e669"
+  description: "Security vulnerability or hardening"
+
+- name: triage
+  color: "e4e669"
+  description: "Needs triage / initial investigation"
+
+- name: "good first issue"
+  color: "7057ff"
+  description: "Good for newcomers"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Extra attention is needed"
+
+- name: stale
+  color: "ededed"
+  description: "No recent activity"
+
+- name: pinned
+  color: "0052cc"
+  description: "Pinned — exempt from stale closure"
+
+- name: roadmap
+  color: "0052cc"
+  description: "Tracks a roadmap milestone"
+
+- name: "area: core"
+  color: "bfd4f2"
+  description: "Core node logic"
+
+- name: "area: crypto"
+  color: "bfd4f2"
+  description: "Cryptography / signature code"
+
+- name: "area: electrum"
+  color: "bfd4f2"
+  description: "Electrum client integration"
+
+- name: "area: config"
+  color: "bfd4f2"
+  description: "Configuration / conf files"
+
+- name: "area: build"
+  color: "fef2c0"
+  description: "Build system / CMake"
+
+- name: "area: tests"
+  color: "fef2c0"
+  description: "Unit / integration tests"
+
+- name: "area: ci"
+  color: "fef2c0"
+  description: "GitHub Actions / CI workflows"
+
+- name: "area: docs"
+  color: "fef2c0"
+  description: "Documentation"
+
+- name: "area: packaging"
+  color: "fef2c0"
+  description: "Release packaging / Docker"
+
+- name: breaking-change
+  color: "d93f0b"
+  description: "Introduces a breaking API or consensus change"
+
+- name: performance
+  color: "c5def5"
+  description: "Performance improvement"
+
+- name: refactor
+  color: "e0e0e0"
+  description: "Code refactor / clean-up, no functional change"
+
+- name: dependencies
+  color: "0366d6"
+  description: "Dependency updates"
+
+- name: "needs review"
+  color: "fbca04"
+  description: "Waiting for code review"
+
+- name: "needs tests"
+  color: "fbca04"
+  description: "Missing test coverage"
+
+- name: "wontfix"
+  color: "ffffff"
+  description: "This will not be worked on"
+
+- name: duplicate
+  color: "cfd3d7"
+  description: "This issue or pull request already exists"
+
+- name: invalid
+  color: "e4e669"
+  description: "This doesn't seem right"

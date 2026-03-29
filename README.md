@@ -1,5 +1,9 @@
 # Bitcoin-2.0max
 
+[![CI](https://github.com/Kushmanmb/Bitcoin-2.0max/actions/workflows/ci.yml/badge.svg)](https://github.com/Kushmanmb/Bitcoin-2.0max/actions/workflows/ci.yml)
+[![Release](https://github.com/Kushmanmb/Bitcoin-2.0max/actions/workflows/release.yml/badge.svg)](https://github.com/Kushmanmb/Bitcoin-2.0max/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Bitcoin supercharged — faster blocks, larger capacity, independent wallet relay via Electrum.**
 
 ## Key Features
@@ -126,3 +130,36 @@ delegated entirely to an Electrum server running at `127.0.0.1:9050`.  Any
 standard Electrum server (e.g. Electrum Personal Server, Fulcrum, Electrs)
 can be used.  The node will start and sync even if the Electrum server is
 temporarily unavailable, and will reconnect automatically.
+
+## Docker
+
+```bash
+# Build the image locally
+docker build -t bitcoin2maxd .
+
+# Run with a host-mounted config directory
+docker run -d \
+  -v ~/.bitcoin2max:/var/lib/bitcoin2max \
+  -p 8333:8333 \
+  bitcoin2maxd
+```
+
+Pre-built images are published to the GitHub Container Registry on every
+tagged release:
+
+```bash
+docker pull ghcr.io/kushmanmb/bitcoin-2.0max:latest
+```
+
+## Project Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned milestones and upcoming features.
+
+## Contributing
+
+1. Fork the repository and create your branch from `main`.
+2. Make your changes, add or update tests, and verify the build passes.
+3. Open a pull request — the [PULL_REQUEST_TEMPLATE](.github/PULL_REQUEST_TEMPLATE.md) will guide you.
+4. A code owner will review and merge your PR.
+
+See [OWNERS.md](OWNERS.md) for the list of maintainers and area owners.
