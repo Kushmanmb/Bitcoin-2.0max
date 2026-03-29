@@ -22,6 +22,13 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
 option(BUILD_TESTS          "Build unit tests"                  ON)
 option(ENABLE_ELECTRUM      "Enable built-in Electrum client"   ON)
 option(ENABLE_TOR           "Route Electrum traffic over Tor"   OFF)
+option(ENABLE_ASAN          "Enable AddressSanitizer"           OFF)
+
+# AddressSanitizer support (pass -DENABLE_ASAN=ON to cmake to activate)
+if(ENABLE_ASAN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+endif()
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
 find_package(Threads REQUIRED)
