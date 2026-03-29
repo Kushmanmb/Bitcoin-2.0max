@@ -1,0 +1,50 @@
+parseSignature: 0 0
+Config: 0 0
+Config: 0 0
+Config: 0 0
+Config: 0 0
+Consensus: 0 0
+Consensus: 0 0
+Electrum: 0 0
+Network: 0 0
+parseSignature: 0 0
+parseSignature: 0 0
+parseSignature: 0 0
+parseSignature: 0 0
+parseSignature: 0 0
+validateMessageSignature: 0 0
+validateMessageSignature: 0 0
+validateMessageSignature: 0 0
+Config: 0 0
+Config: 0 0
+Config: 0 0
+Config: 0 0
+Consensus: 0 0
+Consensus: 0 0
+Electrum: 0 0
+Network: 0 0
+parseSignature: 0 0
+parseSignature: 0 0
+parseSignature: 0 0
+parseSignature: 0 0
+parseSignature: 0 0
+validateMessageSignature: 0 0
+validateMessageSignature: 0 0
+validateMessageSignature: 0 0
+Config: defaults without a file 1 0.00280796
+Config: missing file returns defaults 1 0.0023639
+Config: values are loaded from file 1 0.00238391
+Config: comments and blank lines are ignored 1 0.00228404
+Consensus: supercharged block time is 60 seconds 1 0.00214507
+Consensus: max block size is 32 MiB 1 0.00212739
+Electrum: default host and port match spec 1 0.00213516
+Network: default P2P port is 8333 1 0.0021668
+parseSignature: issue-tracker signature decodes to 65 bytes 1 0.00213255
+parseSignature: header encodes compressed flag and recovery ID 1 0.00213457
+parseSignature: rejects empty string 1 0.00218756
+parseSignature: rejects wrong-length input 1 0.00210363
+parseSignature: rejects invalid header byte 1 0.00214857
+validateMessageSignature: round-trip with deterministic key 1 0.00561136
+validateMessageSignature: wrong address returns false 1 0.00554423
+validateMessageSignature: wrong message returns false 1 0.00548813
+---
