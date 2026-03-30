@@ -93,6 +93,13 @@ EllipticCurveParams parseEllipticCurve(const std::string& name) {
 
     // Extract group order n.
     const BIGNUM* order = EC_GROUP_get0_order(group);
+    if (!order) {
+        BN_free(gx); BN_free(gy);
+        BN_free(p);  BN_free(a); BN_free(b);
+        BN_CTX_free(ctx);
+        EC_GROUP_free(group);
+        return out;
+    }
 
     // Extract cofactor h.
     const BIGNUM* cofactorBn = EC_GROUP_get0_cofactor(group);
