@@ -1,0 +1,86 @@
+name: Publish release to Ghost blog
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Post release notes to kushmanmb-1.ghost.io
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish to Ghost
+        env:
+          GHOST_URL: https://kushmanmb-1.ghost.io
+          GHOST_ADMIN_API_KEY: ${{ secrets.GHOST_ADMIN_API_KEY }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: |
+          python3 - <<'PYEOF'
+          import hmac, hashlib, base64, json, os, time, urllib.request, sys
+
+          raw_key  = os.environ["GHOST_ADMIN_API_KEY"]
+          key_id, key_secret = raw_key.split(":", 1)
+
+          # Build a short-lived JWT (5-minute expiry) for the Ghost Admin API
+          now = int(time.time())
+          def b64url(data: bytes) -> str:
+              return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+          header  = b64url(json.dumps({"alg": "HS256", "typ": "JWT", "kid": key_id}).encode())
+          payload = b64url(json.dumps({"iat": now, "exp": now + 300, "aud": "/admin/"}).encode())
+          signing_input = f"{header}.{payload}"
+          sig = b64url(
+              hmac.new(bytes.fromhex(key_secret), signing_input.encode(), hashlib.sha256).digest()
+          )
+          jwt = f"{signing_input}.{sig}"
+
+          # Compose the post body in Markdown
+          release_tag  = os.environ["RELEASE_TAG"]
+          release_name = os.environ["RELEASE_NAME"]
+          release_body = os.environ["RELEASE_BODY"]
+          release_url  = os.environ["RELEASE_URL"]
+          ghost_url    = os.environ["GHOST_URL"].rstrip("/")
+
+          markdown = (
+              f"## {release_name}\n\n"
+              f"{release_body}\n\n"
+              "---\n\n"
+              f"[View full release on GitHub \u2197]({release_url})"
+          )
+
+          payload_bytes = json.dumps({
+              "posts": [{
+                  "title": f"Release {release_tag}: {release_name}",
+                  "markdown": markdown,
+                  "status": "published",
+                  "tags": [{"name": "Release"}],
+              }]
+          }).encode()
+
+          req = urllib.request.Request(
+              f"{ghost_url}/ghost/api/admin/posts/?source=markdown",
+              data=payload_bytes,
+              headers={
+                  "Authorization": f"Ghost {jwt}",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  print(f"\u2705 Post published (HTTP {resp.status}).")
+          except urllib.error.HTTPError as exc:
+              body = exc.read().decode(errors="replace")
+              print(f"\u274c Ghost API returned HTTP {exc.code}: {body}", file=sys.stderr)
+              sys.exit(1)
+          PYEOF
