@@ -4,10 +4,12 @@
 [![Release](https://github.com/Kushmanmb/Bitcoin-2.0max/actions/workflows/release.yml/badge.svg)](https://github.com/Kushmanmb/Bitcoin-2.0max/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Website](https://img.shields.io/badge/website-Kushmanmb.eth-f7931a)](https://kushmanmb.eth.limo)
+[![Blog](https://img.shields.io/badge/blog-Ghost-738a94)](https://kushmanmb-1.ghost.io/)
 
 **Bitcoin supercharged — faster blocks, larger capacity, independent wallet relay via Electrum.**
 
-🌐 **[Kushmanmb.eth](https://kushmanmb.eth.limo)** — project website
+🌐 **[Kushmanmb.eth](https://kushmanmb.eth.limo)** — project website  
+📝 **[Blog](https://kushmanmb-1.ghost.io/)** — news and updates
 
 ## Key Features
 
