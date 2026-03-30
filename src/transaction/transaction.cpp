@@ -5,12 +5,21 @@
 // Implements:
 //   • validateTransaction()  — consensus rule checks
 //   • loadTransactions()     — plain-text .dat file parser
+//   • serializeTransaction() — canonical Bitcoin wire-format serialisation
+//   • computeContentHash()   — double-SHA256 content hash (txid)
+//   • contentHashHex()       — content hash as reversed lowercase hex string
 
 #include "bitcoin2max/transaction.h"
 #include "bitcoin2max/params.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#include <openssl/sha.h>
+#pragma GCC diagnostic pop
+
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -204,6 +213,111 @@ std::vector<Transaction> loadTransactions(const std::string& path,
     if (hasCurrent && !finaliseCurrent(lineNum + 1)) return {};
 
     return result;
+}
+
+// ── Serialisation ─────────────────────────────────────────────────────────────
+
+/// Write a Bitcoin CompactSize (variable-length) integer.
+static void writeCompactSize(std::vector<uint8_t>& buf, uint64_t v) {
+    if (v < 0xFD) {
+        buf.push_back(static_cast<uint8_t>(v));
+    } else if (v <= 0xFFFF) {
+        buf.push_back(0xFD);
+        buf.push_back(static_cast<uint8_t>(v));
+        buf.push_back(static_cast<uint8_t>(v >> 8));
+    } else if (v <= 0xFFFFFFFF) {
+        buf.push_back(0xFE);
+        buf.push_back(static_cast<uint8_t>(v));
+        buf.push_back(static_cast<uint8_t>(v >>  8));
+        buf.push_back(static_cast<uint8_t>(v >> 16));
+        buf.push_back(static_cast<uint8_t>(v >> 24));
+    } else {
+        buf.push_back(0xFF);
+        for (int i = 0; i < 8; ++i)
+            buf.push_back(static_cast<uint8_t>(v >> (8 * i)));
+    }
+}
+
+static void writeU32LE(std::vector<uint8_t>& buf, uint32_t v) {
+    buf.push_back(static_cast<uint8_t>(v));
+    buf.push_back(static_cast<uint8_t>(v >>  8));
+    buf.push_back(static_cast<uint8_t>(v >> 16));
+    buf.push_back(static_cast<uint8_t>(v >> 24));
+}
+
+static void writeU64LE(std::vector<uint8_t>& buf, uint64_t v) {
+    for (int i = 0; i < 8; ++i)
+        buf.push_back(static_cast<uint8_t>(v >> (8 * i)));
+}
+
+std::vector<uint8_t> serializeTransaction(const Transaction& tx) {
+    std::vector<uint8_t> buf;
+
+    // version (4 bytes, little-endian)
+    writeU32LE(buf, tx.version);
+
+    // vin count
+    writeCompactSize(buf, static_cast<uint64_t>(tx.inputs.size()));
+
+    // inputs
+    for (const auto& inp : tx.inputs) {
+        // prev_txid (32 bytes, as stored)
+        buf.insert(buf.end(), inp.prevTxid.begin(), inp.prevTxid.end());
+        // prev_index (4 bytes, little-endian)
+        writeU32LE(buf, inp.prevIndex);
+        // scriptSig (length-prefixed)
+        writeCompactSize(buf, static_cast<uint64_t>(inp.scriptSig.size()));
+        buf.insert(buf.end(), inp.scriptSig.begin(), inp.scriptSig.end());
+        // sequence (4 bytes, little-endian)
+        writeU32LE(buf, inp.sequence);
+    }
+
+    // vout count
+    writeCompactSize(buf, static_cast<uint64_t>(tx.outputs.size()));
+
+    // outputs
+    for (const auto& out : tx.outputs) {
+        // value (8 bytes, little-endian)
+        writeU64LE(buf, out.valueSatoshis);
+        // scriptPubKey (length-prefixed)
+        writeCompactSize(buf, static_cast<uint64_t>(out.scriptPubKey.size()));
+        buf.insert(buf.end(), out.scriptPubKey.begin(), out.scriptPubKey.end());
+    }
+
+    // locktime (4 bytes, little-endian)
+    writeU32LE(buf, tx.locktime);
+
+    return buf;
+}
+
+// ── Content hash ──────────────────────────────────────────────────────────────
+
+std::array<uint8_t, 32> computeContentHash(const Transaction& tx) {
+    auto raw = serializeTransaction(tx);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    uint8_t h1[SHA256_DIGEST_LENGTH];
+    uint8_t h2[SHA256_DIGEST_LENGTH];
+    SHA256(raw.data(), raw.size(), h1);
+    SHA256(h1, SHA256_DIGEST_LENGTH, h2);
+#pragma GCC diagnostic pop
+
+    std::array<uint8_t, 32> result{};
+    std::copy(h2, h2 + 32, result.begin());
+    return result;
+}
+
+std::string contentHashHex(const Transaction& tx) {
+    auto hash = computeContentHash(tx);
+
+    // Reverse the bytes to produce the conventional big-endian display order
+    // used by Bitcoin block explorers.
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0');
+    for (int i = 31; i >= 0; --i)
+        oss << std::setw(2) << static_cast<unsigned>(hash[static_cast<size_t>(i)]);
+    return oss.str();
 }
 
 } // namespace bitcoin2max

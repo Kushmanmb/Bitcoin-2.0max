@@ -7,13 +7,16 @@
 #include <cstdio>
 #include <fstream>
 #include <string>
+#include <unistd.h>  // getpid()
 
 // Helper: write a temporary conf file and return its path.
+// Uses the process PID so parallel CTest invocations don't overwrite each
+// other's files (each test case runs as a separate process with its own
+// static counter starting at 0).
 static std::string writeTempConf(const std::string& content) {
-    std::string path = "/tmp/test_bitcoin2max_XXXXXX.conf";
-    // Use a fixed name for simplicity in tests
     static int counter = 0;
-    path = "/tmp/test_bitcoin2max_" + std::to_string(counter++) + ".conf";
+    std::string path = "/tmp/test_bitcoin2max_" + std::to_string(getpid())
+                       + "_" + std::to_string(counter++) + ".conf";
     std::ofstream f(path);
     f << content;
     return path;
