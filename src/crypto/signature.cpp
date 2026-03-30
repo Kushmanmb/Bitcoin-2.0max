@@ -148,7 +148,7 @@ static EC_KEY* recoverPublicKey(const BIGNUM* r,
                                 int           recId,
                                 const uint8_t* hash32,
                                 bool           compressed) {
-    if (recId < 0 || recId > 3) return nullptr;
+    if (!r || !s || !hash32 || recId < 0 || recId > 3) return nullptr;
 
     EC_GROUP* group = EC_GROUP_new_by_curve_name(NID_secp256k1);
     if (!group) return nullptr;
@@ -157,17 +157,28 @@ static EC_KEY* recoverPublicKey(const BIGNUM* r,
     if (!ctx) { EC_GROUP_free(group); return nullptr; }
 
     const BIGNUM* order = EC_GROUP_get0_order(group);
+    if (!order) { BN_CTX_free(ctx); EC_GROUP_free(group); return nullptr; }
 
     // Retrieve field prime p
     BIGNUM* p  = BN_new();
     BIGNUM* a  = BN_new();
     BIGNUM* bn = BN_new();
+    if (!p || !a || !bn) {
+        BN_free(p); BN_free(a); BN_free(bn);
+        BN_CTX_free(ctx); EC_GROUP_free(group);
+        return nullptr;
+    }
     EC_GROUP_get_curve(group, p, a, bn, ctx);
     BN_free(a);
     BN_free(bn);
 
     // x = r + (recId / 2) * order
     BIGNUM* x = BN_dup(r);
+    if (!x) {
+        BN_free(p);
+        BN_CTX_free(ctx); EC_GROUP_free(group);
+        return nullptr;
+    }
     if (recId >> 1) BN_add(x, x, order);
 
     // x must be in [0, p)
@@ -180,6 +191,11 @@ static EC_KEY* recoverPublicKey(const BIGNUM* r,
 
     // Decompress x into curve point R with parity (recId & 1)
     EC_POINT* R = EC_POINT_new(group);
+    if (!R) {
+        BN_free(x);
+        BN_CTX_free(ctx); EC_GROUP_free(group);
+        return nullptr;
+    }
     if (!EC_POINT_set_compressed_coordinates(group, R, x, recId & 1, ctx) ||
         !EC_POINT_is_on_curve(group, R, ctx)) {
         EC_POINT_free(R); BN_free(x);
@@ -190,25 +206,48 @@ static EC_KEY* recoverPublicKey(const BIGNUM* r,
 
     // z = message hash as bignum
     BIGNUM* z = BN_bin2bn(hash32, 32, nullptr);
+    if (!z) {
+        EC_POINT_free(R);
+        BN_CTX_free(ctx); EC_GROUP_free(group);
+        return nullptr;
+    }
 
     // r_inv = r^-1 mod order
     BIGNUM* r_inv = BN_new();
-    BN_mod_inverse(r_inv, r, order, ctx);
+    if (!r_inv || !BN_mod_inverse(r_inv, r, order, ctx)) {
+        BN_free(r_inv); BN_free(z);
+        EC_POINT_free(R);
+        BN_CTX_free(ctx); EC_GROUP_free(group);
+        return nullptr;
+    }
 
     // u1 = (-z * r_inv) mod order  →  negate z first
     BIGNUM* neg_z = BN_new();
+    BIGNUM* u1    = BN_new();
+    BIGNUM* u2    = BN_new();
+    if (!neg_z || !u1 || !u2) {
+        BN_free(neg_z); BN_free(u1); BN_free(u2);
+        BN_free(r_inv); BN_free(z);
+        EC_POINT_free(R);
+        BN_CTX_free(ctx); EC_GROUP_free(group);
+        return nullptr;
+    }
     BN_mod(neg_z, z, order, ctx);
     if (!BN_is_zero(neg_z)) BN_sub(neg_z, order, neg_z);
 
-    BIGNUM* u1 = BN_new();
     BN_mod_mul(u1, neg_z, r_inv, order, ctx);
 
     // u2 = (s * r_inv) mod order
-    BIGNUM* u2 = BN_new();
     BN_mod_mul(u2, s, r_inv, order, ctx);
 
     // Q = u1*G + u2*R
     EC_POINT* Q = EC_POINT_new(group);
+    if (!Q) {
+        BN_free(z); BN_free(r_inv); BN_free(neg_z); BN_free(u1); BN_free(u2);
+        EC_POINT_free(R);
+        BN_CTX_free(ctx); EC_GROUP_free(group);
+        return nullptr;
+    }
     bool ok = (EC_POINT_mul(group, Q, u1, R, u2, ctx) == 1) &&
               (!EC_POINT_is_at_infinity(group, Q));
 
@@ -222,22 +261,14 @@ static EC_KEY* recoverPublicKey(const BIGNUM* r,
         return nullptr;
     }
 
-    // EC_KEY_new_by_curve_name is preferred over EC_KEY_new()+EC_KEY_set_group()
-    // on OpenSSL 3.0.x: it binds the key to the curve in one step, avoiding a
-    // provider-dispatch mismatch that can cause EC_KEY_set_group to fail silently
-    // on OpenSSL 3.0.2 (Ubuntu 22.04) and leave the key in an inconsistent state.
-    EC_KEY* key = EC_KEY_new_by_curve_name(NID_secp256k1);
+    EC_KEY* key = EC_KEY_new();
     if (!key) {
         EC_POINT_free(Q);
         EC_GROUP_free(group);
         return nullptr;
     }
-    if (EC_KEY_set_public_key(key, Q) != 1) {
-        EC_KEY_free(key);
-        EC_POINT_free(Q);
-        EC_GROUP_free(group);
-        return nullptr;
-    }
+    EC_KEY_set_group(key, group);
+    EC_KEY_set_public_key(key, Q);
     EC_KEY_set_conv_form(key, compressed ? POINT_CONVERSION_COMPRESSED
                                          : POINT_CONVERSION_UNCOMPRESSED);
 
@@ -264,13 +295,15 @@ static std::string base58Encode(const std::vector<uint8_t>& data) {
     BIGNUM*  rem  = BN_new();
     BIGNUM*  base = BN_new();
     BN_CTX*  ctx  = BN_CTX_new();
-    BN_set_word(base, 58);
 
     std::string rev;
-    while (!BN_is_zero(bn)) {
-        BN_div(div, rem, bn, base, ctx);
-        rev += kBase58Chars[BN_get_word(rem)];
-        BN_copy(bn, div);
+    if (bn && div && rem && base && ctx) {
+        BN_set_word(base, 58);
+        while (!BN_is_zero(bn)) {
+            BN_div(div, rem, bn, base, ctx);
+            rev += kBase58Chars[BN_get_word(rem)];
+            BN_copy(bn, div);
+        }
     }
 
     BN_free(bn); BN_free(div); BN_free(rem); BN_free(base); BN_CTX_free(ctx);
@@ -329,6 +362,8 @@ SignatureInfo parseSignature(const std::string& sigBase64) {
 bool validateMessageSignature(const std::string& address,
                               const std::string& message,
                               const std::string& sigBase64) {
+    if (address.empty() || sigBase64.empty()) return false;
+
     auto info = parseSignature(sigBase64);
     if (!info.valid) return false;
 
@@ -336,6 +371,12 @@ bool validateMessageSignature(const std::string& address,
 
     BIGNUM* r = BN_bin2bn(info.r.data(), 32, nullptr);
     BIGNUM* s = BN_bin2bn(info.s.data(), 32, nullptr);
+
+    if (!r || !s) {
+        if (r) BN_free(r);
+        if (s) BN_free(s);
+        return false;
+    }
 
     EC_KEY* key = recoverPublicKey(r, s, info.recoveryId,
                                    hash.data(), info.compressed);

@@ -82,16 +82,24 @@ static std::string signMessage(const std::string& privKeyHex,
                                const std::string& message) {
     // Parse private key
     BIGNUM* priv = nullptr;
-    BN_hex2bn(&priv, privKeyHex.c_str());
+    if (!BN_hex2bn(&priv, privKeyHex.c_str()) || !priv) return "";
 
     EC_GROUP* group = EC_GROUP_new_by_curve_name(NID_secp256k1);
-    EC_KEY*   key   = EC_KEY_new();
+    if (!group) { BN_free(priv); return ""; }
+
+    EC_KEY* key = EC_KEY_new();
+    if (!key) { EC_GROUP_free(group); BN_free(priv); return ""; }
+
     EC_KEY_set_group(key, group);
     EC_KEY_set_private_key(key, priv);
 
     // Derive compressed public key
-    BN_CTX*   ctx = BN_CTX_new();
+    BN_CTX* ctx = BN_CTX_new();
+    if (!ctx) { EC_KEY_free(key); EC_GROUP_free(group); BN_free(priv); return ""; }
+
     EC_POINT* pub = EC_POINT_new(group);
+    if (!pub) { BN_CTX_free(ctx); EC_KEY_free(key); EC_GROUP_free(group); BN_free(priv); return ""; }
+
     EC_POINT_mul(group, pub, priv, nullptr, nullptr, ctx);
     EC_KEY_set_public_key(key, pub);
     EC_KEY_set_conv_form(key, POINT_CONVERSION_COMPRESSED);
@@ -279,6 +287,30 @@ TEST_CASE("validateMessageSignature: wrong message returns false", "[signature]"
     REQUIRE_FALSE(sig.empty());
 
     REQUIRE_FALSE(validateMessageSignature(expectedAddress, differentMsg, sig));
+}
+
+TEST_CASE("validateMessageSignature: rejects empty signature", "[signature]") {
+    REQUIRE_FALSE(validateMessageSignature("1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH", "test", ""));
+}
+
+TEST_CASE("validateMessageSignature: rejects invalid base64 signature", "[signature]") {
+    REQUIRE_FALSE(validateMessageSignature("1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH", "test", "!!!not_valid_base64!!!"));
+}
+
+TEST_CASE("validateMessageSignature: rejects empty address", "[signature]") {
+    REQUIRE_FALSE(validateMessageSignature("", "test", kIssueSig));
+}
+
+TEST_CASE("invalid signatures rejected consistently by parseSignature and validateMessageSignature", "[signature]") {
+    // Demonstrate that parseSignature.valid must be true before calling
+    // validateMessageSignature, and that bad input is consistently rejected.
+    auto infoEmpty = parseSignature("");
+    REQUIRE_FALSE(infoEmpty.valid);
+    REQUIRE_FALSE(validateMessageSignature("1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH", "test", ""));
+
+    auto infoShort = parseSignature("AAAA");
+    REQUIRE_FALSE(infoShort.valid);
+    REQUIRE_FALSE(validateMessageSignature("1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH", "test", "AAAA"));
 }
 
 #pragma GCC diagnostic pop
