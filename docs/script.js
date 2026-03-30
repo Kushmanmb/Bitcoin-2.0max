@@ -1,4 +1,4 @@
-/* Bitcoin 2.0max — bitcoinmax.org — minimal site script */
+/* Bitcoin 2.0max — Kushmanmb.eth — minimal site script */
 
 (function () {
   'use strict';
