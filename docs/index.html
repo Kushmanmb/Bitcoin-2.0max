@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Bitcoin 2.0max — Bitcoin supercharged. 10× faster blocks, 32× larger capacity, independent wallet relay via Electrum." />
+  <meta property="og:title" content="Bitcoin 2.0max — Bitcoinmax.org" />
+  <meta property="og:description" content="Bitcoin supercharged. 10× faster blocks, 32× larger capacity, independent wallet relay via Electrum." />
+  <meta property="og:url" content="https://bitcoinmax.org" />
+  <meta property="og:type" content="website" />
+  <title>Bitcoin 2.0max — Bitcoinmax.org</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>₿</text></svg>" />
+</head>
+<body>
+  <!-- ─── NAVIGATION ─── -->
+  <nav class="nav" id="navbar">
+    <div class="nav__inner">
+      <a href="#" class="nav__logo">
+        <span class="logo-symbol">₿</span>
+        <span class="logo-text">Bitcoin 2.0<strong>max</strong></span>
+      </a>
+      <button class="nav__toggle" id="navToggle" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav__links" id="navLinks">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#get-started">Get Started</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
+        <li><a href="#docker">Docker</a></li>
+        <li>
+          <a href="https://github.com/Kushmanmb/Bitcoin-2.0max" class="btn btn--outline btn--sm" target="_blank" rel="noopener">
+            GitHub
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ─── HERO ─── -->
+  <header class="hero" id="hero">
+    <div class="hero__bg-grid"></div>
+    <div class="container hero__content">
+      <div class="badge">Open Source · MIT License</div>
+      <h1 class="hero__title">
+        Bitcoin <span class="accent">Supercharged</span>
+      </h1>
+      <p class="hero__subtitle">
+        Bitcoin 2.0max delivers 10× faster block confirmation, 32× larger capacity,
+        and fully independent wallet relay — built in C++17 for developers who demand more.
+      </p>
+      <div class="hero__actions">
+        <a href="#get-started" class="btn btn--primary btn--lg">Get Started</a>
+        <a href="https://github.com/Kushmanmb/Bitcoin-2.0max" class="btn btn--ghost btn--lg" target="_blank" rel="noopener">
+          View on GitHub ↗
+        </a>
+      </div>
+      <div class="hero__stats">
+        <div class="stat">
+          <span class="stat__value">10×</span>
+          <span class="stat__label">Faster Blocks</span>
+        </div>
+        <div class="stat__divider"></div>
+        <div class="stat">
+          <span class="stat__value">32×</span>
+          <span class="stat__label">Larger Capacity</span>
+        </div>
+        <div class="stat__divider"></div>
+        <div class="stat">
+          <span class="stat__value">60s</span>
+          <span class="stat__label">Block Time</span>
+        </div>
+        <div class="stat__divider"></div>
+        <div class="stat">
+          <span class="stat__value">32 MiB</span>
+          <span class="stat__label">Max Block Size</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── FEATURES ─── -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section__header">
+        <h2 class="section__title">Why Bitcoin 2.0max?</h2>
+        <p class="section__subtitle">
+          A high-performance Bitcoin fork engineered for throughput, independence, and scalability.
+        </p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-card__icon">⚡</div>
+          <h3>10× Faster Confirmations</h3>
+          <p>
+            60-second target block time means transactions confirm in under a minute,
+            versus Bitcoin's 10-minute average — ideal for high-frequency use cases.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card__icon">📦</div>
+          <h3>32× Larger Blocks</h3>
+          <p>
+            32 MiB maximum block size accommodates far more transactions per block,
+            dramatically increasing throughput without sacrificing decentralisation.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card__icon">🔌</div>
+          <h3>Independent Wallet Relay</h3>
+          <p>
+            Wallet functionality is delegated to any standard Electrum server (Electrum Personal Server,
+            Fulcrum, Electrs). No external infrastructure dependencies.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card__icon">🔒</div>
+          <h3>OpenSSL Cryptography</h3>
+          <p>
+            Full elliptic-curve cryptography using OpenSSL, with a clean C++17 API for
+            signature generation, verification, and key management.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card__icon">🐳</div>
+          <h3>Docker-Ready</h3>
+          <p>
+            Multi-stage Dockerfile ships a stripped, minimal runtime image.
+            Pre-built images published to GitHub Container Registry on every tagged release.
+          </p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card__icon">🧪</div>
+          <h3>Fully Tested CI/CD</h3>
+          <p>
+            Comprehensive unit tests for consensus parameters, config loading, cryptographic operations,
+            transactions, and P2P handshake — validated on every commit.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── GET STARTED ─── -->
+  <section class="section section--alt" id="get-started">
+    <div class="container">
+      <div class="section__header">
+        <h2 class="section__title">Get Started</h2>
+        <p class="section__subtitle">Build and run your own Bitcoin 2.0max node in minutes.</p>
+      </div>
+
+      <div class="steps">
+        <!-- Step 1 -->
+        <div class="step">
+          <div class="step__number">1</div>
+          <div class="step__content">
+            <h3>Prerequisites</h3>
+            <p>Ensure the following are installed on your system:</p>
+            <pre><code>cmake &gt;= 3.16
+g++ / clang++ with C++17 support
+libssl-dev  (OpenSSL development headers)</code></pre>
+            <p class="step__hint">On Debian/Ubuntu: <code>sudo apt install cmake g++ libssl-dev</code></p>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step">
+          <div class="step__number">2</div>
+          <div class="step__content">
+            <h3>Clone &amp; Build</h3>
+            <pre><code>git clone https://github.com/Kushmanmb/Bitcoin-2.0max.git
+cd Bitcoin-2.0max
+
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)</code></pre>
+            <p class="step__hint">The resulting binary is <code>build/bitcoin2maxd</code>.</p>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step">
+          <div class="step__number">3</div>
+          <div class="step__content">
+            <h3>Configure</h3>
+            <pre><code>mkdir -p ~/.bitcoin2max
+cp conf/bitcoin2max.conf ~/.bitcoin2max/bitcoin2max.conf
+# Edit settings as needed — key options:
+#   targetblocktime=60      # 60-second blocks
+#   maxblocksize=33554432   # 32 MiB
+#   electrumhost=127.0.0.1
+#   electrumport=9050</code></pre>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step">
+          <div class="step__number">4</div>
+          <div class="step__content">
+            <h3>Run Your Node</h3>
+            <pre><code># Start with default config
+./build/bitcoin2maxd
+
+# Or specify a custom config
+./build/bitcoin2maxd --conf /path/to/bitcoin2max.conf
+
+# Print help
+./build/bitcoin2maxd --help</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="build-options">
+        <h3>Build Options</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>BUILD_TESTS</code></td>
+                <td><code>ON</code></td>
+                <td>Build unit tests (fetches Catch2 automatically)</td>
+              </tr>
+              <tr>
+                <td><code>ENABLE_ELECTRUM</code></td>
+                <td><code>ON</code></td>
+                <td>Compile in the Electrum JSON-RPC client</td>
+              </tr>
+              <tr>
+                <td><code>ENABLE_TOR</code></td>
+                <td><code>OFF</code></td>
+                <td>Route Electrum traffic over a Tor SOCKS5 proxy</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <pre><code># Example: build without tests
+cmake -B build -DBUILD_TESTS=OFF
+cmake --build build</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── DOCKER ─── -->
+  <section class="section" id="docker">
+    <div class="container">
+      <div class="section__header">
+        <h2 class="section__title">Docker</h2>
+        <p class="section__subtitle">Run Bitcoin 2.0max in an isolated, production-ready container.</p>
+      </div>
+      <div class="docker-grid">
+        <div class="docker-block">
+          <h3>Build Locally</h3>
+          <pre><code>docker build -t bitcoin2maxd .
+
+docker run -d \
+  -v ~/.bitcoin2max:/var/lib/bitcoin2max \
+  -p 8333:8333 \
+  bitcoin2maxd</code></pre>
+        </div>
+        <div class="docker-block">
+          <h3>Pull Pre-built Image</h3>
+          <pre><code>docker pull \
+  ghcr.io/kushmanmb/bitcoin-2.0max:latest
+
+docker run -d \
+  -v ~/.bitcoin2max:/var/lib/bitcoin2max \
+  -p 8333:8333 \
+  ghcr.io/kushmanmb/bitcoin-2.0max:latest</code></pre>
+        </div>
+      </div>
+      <div class="ports-info">
+        <h3>Exposed Ports</h3>
+        <div class="ports-grid">
+          <div class="port-item">
+            <span class="port-number">8333</span>
+            <span class="port-label">P2P Network</span>
+          </div>
+          <div class="port-item">
+            <span class="port-number">8332</span>
+            <span class="port-label">JSON-RPC</span>
+          </div>
+          <div class="port-item">
+            <span class="port-number">9050</span>
+            <span class="port-label">Electrum</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── ROADMAP ─── -->
+  <section class="section section--alt" id="roadmap">
+    <div class="container">
+      <div class="section__header">
+        <h2 class="section__title">Roadmap</h2>
+        <p class="section__subtitle">
+          The path to a fully featured, high-throughput Bitcoin node.
+        </p>
+      </div>
+      <div class="roadmap-timeline">
+
+        <div class="milestone milestone--done">
+          <div class="milestone__badge">v2.0.0 ✅</div>
+          <h3>Foundation</h3>
+          <ul>
+            <li>CMake-based build system (C++17)</li>
+            <li>Configurable block parameters (60 s target, 32 MiB blocks)</li>
+            <li>Electrum JSON-RPC client</li>
+            <li>Config file parser</li>
+            <li>Basic P2P node loop</li>
+            <li>Unit tests &amp; CI/CD</li>
+            <li>Docker image</li>
+          </ul>
+        </div>
+
+        <div class="milestone">
+          <div class="milestone__badge">v2.1.0</div>
+          <h3>Network Layer</h3>
+          <ul>
+            <li>Full peer handshake protocol</li>
+            <li>Persistent peer address book</li>
+            <li>Async I/O via Boost.Asio</li>
+            <li>Tor SOCKS5 integration</li>
+            <li>DNS seed bootstrap</li>
+          </ul>
+        </div>
+
+        <div class="milestone">
+          <div class="milestone__badge">v2.2.0</div>
+          <h3>Block Validation</h3>
+          <ul>
+            <li>Script interpreter (OP codes)</li>
+            <li>Merkle tree verification</li>
+            <li>Chain-tip selection</li>
+            <li>Reorg logic</li>
+          </ul>
+        </div>
+
+        <div class="milestone">
+          <div class="milestone__badge">v2.3.0</div>
+          <h3>Mempool &amp; Relay</h3>
+          <ul>
+            <li>In-memory transaction pool</li>
+            <li>RBF (Replace-By-Fee)</li>
+            <li>Fee estimation API</li>
+          </ul>
+        </div>
+
+        <div class="milestone">
+          <div class="milestone__badge">v2.4.0</div>
+          <h3>Wallet API</h3>
+          <ul>
+            <li>Electrum server-side protocol</li>
+            <li>Address-to-UTXO index</li>
+            <li>Balance query</li>
+            <li>SSL/TLS for remote connections</li>
+          </ul>
+        </div>
+
+        <div class="milestone">
+          <div class="milestone__badge">v3.0.0</div>
+          <h3>Performance &amp; Scalability</h3>
+          <ul>
+            <li>LevelDB / RocksDB UTXO set</li>
+            <li>Parallel script validation</li>
+            <li>SIMD-accelerated SHA-256</li>
+            <li>Profile-guided optimisation (PGO)</li>
+          </ul>
+        </div>
+
+      </div>
+      <p class="roadmap__link">
+        Full details in
+        <a href="https://github.com/Kushmanmb/Bitcoin-2.0max/blob/main/ROADMAP.md" target="_blank" rel="noopener">
+          ROADMAP.md ↗
+        </a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ─── CONTRIBUTING ─── -->
+  <section class="section" id="contributing">
+    <div class="container">
+      <div class="section__header">
+        <h2 class="section__title">Contributing</h2>
+        <p class="section__subtitle">Bitcoin 2.0max is open source and welcomes contributions.</p>
+      </div>
+      <div class="contribute-steps">
+        <div class="contribute-step">
+          <span class="contribute-step__num">1</span>
+          <span>Fork the repository and create your branch from <code>main</code>.</span>
+        </div>
+        <div class="contribute-step">
+          <span class="contribute-step__num">2</span>
+          <span>Make your changes, add or update tests, and verify the build passes.</span>
+        </div>
+        <div class="contribute-step">
+          <span class="contribute-step__num">3</span>
+          <span>Open a pull request — the PR template will guide you through the process.</span>
+        </div>
+        <div class="contribute-step">
+          <span class="contribute-step__num">4</span>
+          <span>A code owner will review and merge your PR.</span>
+        </div>
+      </div>
+      <div class="contribute-cta">
+        <a href="https://github.com/Kushmanmb/Bitcoin-2.0max" class="btn btn--primary btn--lg" target="_blank" rel="noopener">
+          Open on GitHub ↗
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <span class="logo-symbol">₿</span>
+        <span class="logo-text">Bitcoin 2.0<strong>max</strong></span>
+      </div>
+      <nav class="footer__links" aria-label="Footer navigation">
+        <a href="https://github.com/Kushmanmb/Bitcoin-2.0max" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/Kushmanmb/Bitcoin-2.0max/blob/main/ROADMAP.md" target="_blank" rel="noopener">Roadmap</a>
+        <a href="https://github.com/Kushmanmb/Bitcoin-2.0max/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+        <a href="https://github.com/Kushmanmb/Bitcoin-2.0max/blob/main/OWNERS.md" target="_blank" rel="noopener">Maintainers</a>
+        <a href="https://github.com/Kushmanmb/Bitcoin-2.0max/issues" target="_blank" rel="noopener">Issues</a>
+      </nav>
+      <p class="footer__copy">
+        © 2026 Bitcoin 2.0max contributors. Released under the
+        <a href="https://github.com/Kushmanmb/Bitcoin-2.0max/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>.
+      </p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
