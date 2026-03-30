@@ -32,13 +32,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && useradd --system --no-create-home --shell /usr/sbin/nologin bitcoin2max
 
 COPY --from=builder /src/build/bitcoin2maxd /usr/local/bin/bitcoin2maxd
-COPY --from=builder /src/conf/bitcoin2max.conf /etc/bitcoin2max/bitcoin2max.conf
 
+# Install the default config (datadir adjusted for the container path).
+RUN mkdir -p /etc/bitcoin2max
+COPY --from=builder /src/conf/bitcoin2max.conf /etc/bitcoin2max/bitcoin2max.conf
+RUN sed -i 's|^datadir=.*|datadir=/var/lib/bitcoin2max|' \
+        /etc/bitcoin2max/bitcoin2max.conf
+
+# Install the container entry-point helper.
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Persistent data directory (chain state, wallet, user config).
 RUN mkdir -p /var/lib/bitcoin2max && chown bitcoin2max /var/lib/bitcoin2max
+
+VOLUME ["/var/lib/bitcoin2max"]
 
 USER bitcoin2max
 
 EXPOSE 8333 9050
 
-ENTRYPOINT ["/usr/local/bin/bitcoin2maxd"]
-CMD ["--conf", "/etc/bitcoin2max/bitcoin2max.conf"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD []
