@@ -70,4 +70,30 @@ ValidationResult validateTransaction(const Transaction& tx);
 std::vector<Transaction> loadTransactions(const std::string& path,
                                           std::string&       error);
 
+// ── Content hash ─────────────────────────────────────────────────────────────
+
+/// Serialize a transaction to its canonical Bitcoin wire format.
+///
+/// Wire format: version(4) | vin_count(varint) | inputs... |
+///              vout_count(varint) | outputs... | locktime(4)
+///
+/// \returns The raw serialized bytes.
+std::vector<uint8_t> serializeTransaction(const Transaction& tx);
+
+/// Compute the double-SHA256 content hash of a transaction.
+///
+/// This is the standard Bitcoin transaction ID (TXID) computed as
+/// SHA256(SHA256(serialize(tx))).
+///
+/// \returns A 32-byte hash array.
+std::array<uint8_t, 32> computeContentHash(const Transaction& tx);
+
+/// Return the content hash of a transaction as a lowercase hex string.
+///
+/// The bytes are reversed before hex-encoding to match the conventional
+/// big-endian display used by Bitcoin block explorers.
+///
+/// \returns A 64-character lowercase hex string.
+std::string contentHashHex(const Transaction& tx);
+
 } // namespace bitcoin2max

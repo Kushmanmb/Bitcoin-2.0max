@@ -292,3 +292,127 @@ TEST_CASE("loadTransactions: skips comment and blank lines", "[transaction]") {
     REQUIRE(err.empty());
     REQUIRE(txs.size() == 1u);
 }
+
+// ── serializeTransaction tests ────────────────────────────────────────────────
+
+TEST_CASE("serializeTransaction: non-empty for minimal transaction", "[transaction]") {
+    auto tx  = makeMinimalTx(1);
+    auto raw = serializeTransaction(tx);
+    REQUIRE_FALSE(raw.empty());
+}
+
+TEST_CASE("serializeTransaction: begins with version bytes (little-endian)", "[transaction]") {
+    auto tx  = makeMinimalTx(1);
+    auto raw = serializeTransaction(tx);
+    REQUIRE(raw.size() >= 4u);
+    // version 1 in little-endian: 01 00 00 00
+    REQUIRE(raw[0] == 0x01);
+    REQUIRE(raw[1] == 0x00);
+    REQUIRE(raw[2] == 0x00);
+    REQUIRE(raw[3] == 0x00);
+}
+
+TEST_CASE("serializeTransaction: ends with locktime bytes (little-endian)", "[transaction]") {
+    auto tx      = makeMinimalTx(1);
+    tx.locktime  = 500000u;  // 0x0007A120
+    auto raw     = serializeTransaction(tx);
+    REQUIRE(raw.size() >= 4u);
+    // locktime 500000 = 0x0007A120 in little-endian: 20 A1 07 00
+    REQUIRE(raw[raw.size() - 4] == 0x20);
+    REQUIRE(raw[raw.size() - 3] == 0xA1);
+    REQUIRE(raw[raw.size() - 2] == 0x07);
+    REQUIRE(raw[raw.size() - 1] == 0x00);
+}
+
+TEST_CASE("serializeTransaction: two transactions with same content produce identical bytes",
+          "[transaction]") {
+    auto tx1 = makeMinimalTx(1);
+    auto tx2 = makeMinimalTx(1);
+    REQUIRE(serializeTransaction(tx1) == serializeTransaction(tx2));
+}
+
+TEST_CASE("serializeTransaction: differing versions produce different bytes", "[transaction]") {
+    auto tx1 = makeMinimalTx(1);
+    auto tx2 = makeMinimalTx(2);
+    REQUIRE(serializeTransaction(tx1) != serializeTransaction(tx2));
+}
+
+// ── computeContentHash tests ──────────────────────────────────────────────────
+
+TEST_CASE("computeContentHash: returns 32-byte hash", "[transaction]") {
+    auto tx   = makeMinimalTx(1);
+    auto hash = computeContentHash(tx);
+    REQUIRE(hash.size() == 32u);
+}
+
+TEST_CASE("computeContentHash: identical transactions produce identical hashes",
+          "[transaction]") {
+    auto tx1 = makeMinimalTx(1);
+    auto tx2 = makeMinimalTx(1);
+    REQUIRE(computeContentHash(tx1) == computeContentHash(tx2));
+}
+
+TEST_CASE("computeContentHash: different transactions produce different hashes",
+          "[transaction]") {
+    auto tx1 = makeMinimalTx(1);
+    auto tx2 = makeMinimalTx(2);
+    REQUIRE(computeContentHash(tx1) != computeContentHash(tx2));
+}
+
+TEST_CASE("computeContentHash: hash is not all-zero for non-empty transaction",
+          "[transaction]") {
+    auto tx   = makeMinimalTx(1);
+    auto hash = computeContentHash(tx);
+    bool allZero = true;
+    for (auto b : hash) {
+        if (b != 0) { allZero = false; break; }
+    }
+    REQUIRE_FALSE(allZero);
+}
+
+// ── contentHashHex tests ──────────────────────────────────────────────────────
+
+TEST_CASE("contentHashHex: returns 64-character string", "[transaction]") {
+    auto tx  = makeMinimalTx(1);
+    auto hex = contentHashHex(tx);
+    REQUIRE(hex.size() == 64u);
+}
+
+TEST_CASE("contentHashHex: contains only lowercase hex characters", "[transaction]") {
+    auto tx  = makeMinimalTx(1);
+    auto hex = contentHashHex(tx);
+    for (char c : hex) {
+        bool valid = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+        REQUIRE(valid);
+    }
+}
+
+TEST_CASE("contentHashHex: identical transactions produce identical hex strings",
+          "[transaction]") {
+    auto tx1 = makeMinimalTx(1);
+    auto tx2 = makeMinimalTx(1);
+    REQUIRE(contentHashHex(tx1) == contentHashHex(tx2));
+}
+
+TEST_CASE("contentHashHex: different transactions produce different hex strings",
+          "[transaction]") {
+    auto tx1 = makeMinimalTx(1);
+    auto tx2 = makeMinimalTx(2);
+    REQUIRE(contentHashHex(tx1) != contentHashHex(tx2));
+}
+
+TEST_CASE("contentHashHex: hex is reversed byte order of computeContentHash",
+          "[transaction]") {
+    auto tx   = makeMinimalTx(1);
+    auto hash = computeContentHash(tx);
+    auto hex  = contentHashHex(tx);
+
+    // The hex string should represent the hash bytes in reverse order.
+    // hash[31] should be the first two hex chars, hash[0] the last two.
+    auto byteToHex = [](uint8_t b) -> std::string {
+        const char* digits = "0123456789abcdef";
+        return std::string{digits[b >> 4], digits[b & 0x0F]};
+    };
+    REQUIRE(hex.substr(0, 2) == byteToHex(hash[31]));
+    REQUIRE(hex.substr(62, 2) == byteToHex(hash[0]));
+}
