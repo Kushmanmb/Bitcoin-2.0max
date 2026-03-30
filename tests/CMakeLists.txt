@@ -15,6 +15,7 @@ add_executable(bitcoin2max_tests
     test_elliptic_curve.cpp
     test_params.cpp
     test_signature.cpp
+    test_transaction.cpp
     test_wallet.cpp
 )
 
@@ -38,6 +39,14 @@ target_sources(bitcoin2max_tests
         ${CMAKE_SOURCE_DIR}/src/config/config.cpp
         ${CMAKE_SOURCE_DIR}/src/crypto/elliptic_curve.cpp
         ${CMAKE_SOURCE_DIR}/src/crypto/signature.cpp
+        ${CMAKE_SOURCE_DIR}/src/transaction/transaction.cpp
+)
+
+# Provide the path to transaction_data.dat via a compile-time definition so
+# the test binary can find it regardless of the working directory.
+target_compile_definitions(bitcoin2max_tests
+    PRIVATE
+        TRANSACTION_DAT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/transaction_data.dat"
 )
 
 include(CTest)

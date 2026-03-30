@@ -1,0 +1,32 @@
+# transaction_data.dat
+# Bitcoin 2.0max transaction data
+#
+# Format:
+#   TX <version> <locktime>
+#   IN <prev_txid_hex64> <prev_index> <script_hex> <sequence_hex>
+#   OUT <value_satoshis> <script_hex>
+#
+# Rules enforced by loadTransactions():
+#   - version must be 1 or 2
+#   - at least one input per transaction
+#   - at least one output per transaction
+#   - no output value may exceed MAX_MONEY_SATOSHIS (2_100_000_000_000_000 sat)
+#   - total output value may not exceed MAX_MONEY_SATOSHIS
+
+# ── Transaction 1: coinbase (block reward) ────────────────────────────────────
+# prev_txid = all-zeros, prev_index = 0xFFFFFFFF (standard coinbase marker)
+TX 1 0
+IN 0000000000000000000000000000000000000000000000000000000000000000 4294967295 04deadbeef ffffffff
+OUT 5000000000 76a914000000000000000000000000000000000000000088ac
+
+# ── Transaction 2: regular P2PKH transfer ─────────────────────────────────────
+TX 1 0
+IN abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890 0 4830450221009a8e614601 ffffffff
+OUT 100000000 76a914abcdef1234567890abcdef1234567890abcdef123488ac
+OUT 399900000 76a914fedcba0987654321fedcba0987654321fedcba098788ac
+
+# ── Transaction 3: version 2 (RBF-opt-in) ─────────────────────────────────────
+TX 2 500000
+IN 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef 1 483045022100cafe0102 fdffffff
+OUT 250000000 76a914cafe000000000000000000000000000000000000001588ac
+OUT 149800000 76a914babe000000000000000000000000000000000000001588ac
