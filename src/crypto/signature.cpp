@@ -21,6 +21,7 @@
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/obj_mac.h>
+#include <openssl/provider.h>
 #include <openssl/sha.h>
 
 #include <algorithm>
@@ -74,12 +75,26 @@ static std::array<uint8_t, 32> doubleSHA256(const uint8_t* data, size_t len) {
 }
 
 // RIPEMD-160 via EVP (compatible with both OpenSSL 1.1.x and 3.x).
+// On OpenSSL 3.x, RIPEMD-160 lives in the legacy provider which must be
+// loaded explicitly on distributions (e.g. Ubuntu 22.04) that don't enable
+// it in their openssl.cnf by default.
 static std::array<uint8_t, 20> ripemd160(const uint8_t* data, size_t len) {
     std::array<uint8_t, 20> out{};
     unsigned int outLen = static_cast<unsigned int>(out.size());
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     const EVP_MD* md = EVP_get_digestbyname("RIPEMD160");
+    if (!md) {
+        // RIPEMD-160 has been moved to the legacy provider in OpenSSL 3.x.
+        // Attempt to load it once for the application lifetime (static ensures
+        // a single load attempt; the provider intentionally persists until
+        // process exit, which is the standard OpenSSL practice).
+        // If the load fails (e.g. legacy.so absent) md remains NULL and the
+        // function returns an all-zero array, which callers must handle.
+        static OSSL_PROVIDER* legacyProv = OSSL_PROVIDER_load(nullptr, "legacy");
+        (void)legacyProv;
+        md = EVP_get_digestbyname("RIPEMD160");
+    }
     if (ctx && md) {
         EVP_DigestInit_ex(ctx, md, nullptr);
         EVP_DigestUpdate(ctx, data, len);
@@ -302,7 +317,9 @@ static std::string base58Encode(const std::vector<uint8_t>& data) {
 
 static std::string pubkeyToAddress(EC_KEY* key) {
     // 1. Serialise public key (respects POINT_CONVERSION_* form set on key)
-    size_t   len = static_cast<size_t>(i2o_ECPublicKey(key, nullptr));
+    int ilen = i2o_ECPublicKey(key, nullptr);
+    if (ilen <= 0) return "";
+    size_t   len = static_cast<size_t>(ilen);
     std::vector<uint8_t> pub(len);
     uint8_t* ptr = pub.data();
     i2o_ECPublicKey(key, &ptr);
