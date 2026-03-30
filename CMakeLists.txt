@@ -41,6 +41,7 @@ set(BITCOIN2MAX_SOURCES
     src/crypto/signature.cpp
     src/net/message.cpp
     src/net/peer.cpp
+    src/transaction/transaction.cpp
 )
 
 # ── Executable ────────────────────────────────────────────────────────────────
