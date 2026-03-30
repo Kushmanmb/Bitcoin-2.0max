@@ -86,12 +86,16 @@ static std::array<uint8_t, 20> ripemd160(const uint8_t* data, size_t len) {
     const EVP_MD* md = EVP_get_digestbyname("RIPEMD160");
     if (!md) {
         // RIPEMD-160 has been moved to the legacy provider in OpenSSL 3.x.
-        // Attempt to load it once for the application lifetime (static ensures
-        // a single load attempt; the provider intentionally persists until
-        // process exit, which is the standard OpenSSL practice).
-        // If the load fails (e.g. legacy.so absent) md remains NULL and the
-        // function returns an all-zero array, which callers must handle.
-        static OSSL_PROVIDER* legacyProv = OSSL_PROVIDER_load(nullptr, "legacy");
+        // On OpenSSL 3.0.x before 3.0.7, calling OSSL_PROVIDER_load for
+        // "legacy" without first explicitly loading "default" can crash
+        // because the library context is not yet fully initialized.
+        // Load "default" first to ensure the context is ready, then load
+        // "legacy".  Both calls are idempotent (they increment the refcount
+        // if the provider is already loaded) and the handles intentionally
+        // persist until process exit, which is the standard OpenSSL practice.
+        static OSSL_PROVIDER* defaultProv = OSSL_PROVIDER_load(nullptr, "default");
+        static OSSL_PROVIDER* legacyProv  = OSSL_PROVIDER_load(nullptr, "legacy");
+        (void)defaultProv;
         (void)legacyProv;
         md = EVP_get_digestbyname("RIPEMD160");
     }
