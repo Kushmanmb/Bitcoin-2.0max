@@ -8,11 +8,14 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <vector>
 
 namespace bitcoin2max {
 
 class ElectrumClient;
+namespace net { class Peer; }
 
 class Node {
 public:
@@ -36,12 +39,23 @@ public:
     uint64_t bestHeight()    const { return bestHeight_.load(); }
     bool     isRunning()     const { return running_.load(); }
 
+    /// Number of peers that have completed the opening handshake.
+    size_t peerCount() const;
+
 private:
     const Config& cfg_;
     std::atomic<bool>     running_{false};
     std::atomic<uint64_t> bestHeight_{0};
 
     std::unique_ptr<ElectrumClient> electrum_;
+
+    // ── P2P peer management ───────────────────────────────────────────────────
+    int                                         listenFd_{-1};
+    std::vector<std::unique_ptr<net::Peer>>     peers_;
+    mutable std::mutex                          peersMutex_;
+
+    bool startListening();
+    void acceptLoop();
 
     void mainLoop();
     void connectToElectrum();
