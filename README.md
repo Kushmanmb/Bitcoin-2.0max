@@ -58,6 +58,13 @@ cmake --build build
 ### Run Tests
 
 ```bash
+# Quick all-in-one (configure, build, and run):
+./forge test
+
+# Run only a specific test tag (e.g. wallet tests):
+./forge test "[wallet]"
+
+# Manual CMake/ctest equivalent:
 cmake -B build -DBUILD_TESTS=ON
 cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure

@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# forge — lightweight test runner for Bitcoin 2.0max
+#
+# Usage:
+#   ./forge test              Build and run the full test suite
+#   ./forge test [ARGS...]    Pass extra arguments to the test binary
+#                             e.g. ./forge test "[wallet]" to run wallet tests only
+#
+# The script mirrors the feel of Foundry's `forge test` command for this
+# CMake / Catch2 project.
+
+set -euo pipefail
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+die() { echo "forge: error: $*" >&2; exit 1; }
+
+usage() {
+    cat <<'EOF'
+Usage: forge <command> [options]
+
+Commands:
+  test [ARGS...]   Build and run the Catch2 test suite.
+                   Any additional arguments are forwarded to the test binary.
+
+Options:
+  -h, --help       Show this help message and exit.
+
+Examples:
+  forge test                    Run all tests
+  forge test "[wallet]"         Run only the wallet tests
+  forge test "[transaction]"    Run only the transaction tests
+  forge test --list-tests       List all available test cases
+EOF
+}
+
+# ── Argument parsing ──────────────────────────────────────────────────────────
+
+if [[ $# -eq 0 ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    usage
+    exit 0
+fi
+
+COMMAND="$1"
+shift
+
+case "$COMMAND" in
+    test)
+        ;;
+    *)
+        die "unknown command '$COMMAND'. Run 'forge --help' for usage."
+        ;;
+esac
+
+# ── Locate repository root ────────────────────────────────────────────────────
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$SCRIPT_DIR"
+BUILD_DIR="$REPO_ROOT/build"
+
+# ── Configure ────────────────────────────────────────────────────────────────
+
+echo "=== forge test: configuring ==="
+cmake -S "$REPO_ROOT" -B "$BUILD_DIR" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_TESTS=ON \
+    -DENABLE_ELECTRUM=ON \
+    --log-level=WARNING
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+
+echo "=== forge test: building ==="
+JOBS="$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 1)"
+cmake --build "$BUILD_DIR" --target bitcoin2max_tests --parallel "$JOBS"
+
+# ── Run ───────────────────────────────────────────────────────────────────────
+
+echo "=== forge test: running ==="
+
+TEST_BIN="$BUILD_DIR/tests/bitcoin2max_tests"
+[[ -x "$TEST_BIN" ]] || die "test binary not found at $TEST_BIN"
+
+# Run with the user-supplied filter/args if any, otherwise run all tests.
+if [[ $# -gt 0 ]]; then
+    "$TEST_BIN" "$@"
+else
+    "$TEST_BIN"
+fi
