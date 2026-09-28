@@ -120,26 +120,114 @@ void Node::mainLoop() {
     std::cout << "[Node] Main loop started.\n";
 
     while (running_.load()) {
-        // In a full implementation this loop drives:
-        //  - P2P message dispatch
-        //  - Block download & validation
-        //  - Mempool management
-        //  - Electrum subscription updates
 
-        if (electrum_ && electrum_->isConnected()) {
-            auto header = electrum_->getBestBlockHeader();
-            if (!header.empty()) {
-                bestHeight_.fetch_add(0); // placeholder — parse real height
-                // std::cout << "[Node] Best header: " << header << "\n";
-            }
-        }
+        updateChainState();
 
         std::this_thread::sleep_for(
-            std::chrono::seconds(cfg_.target_block_time));
+            std::chrono::seconds(
+                cfg_.target_block_time
+            )
+        );
     }
 
-    std::cout << "[Node] Main loop stopped.\n";
+    std::cout
+        << "[Node] Main loop stopped.\n";
+
     running_.store(false);
+}
+
+
+// ── node state ────────────────────────────────────────────────────────────────
+
+void Node::setBestHeight(uint64_t height) {
+    bestHeight_.store(height);
+}
+
+
+void Node::setBestBlockHash(
+    const std::string& hash
+) {
+    std::lock_guard<std::mutex>
+        lock(chainMutex_);
+
+    bestBlockHash_ = hash;
+}
+
+
+std::string Node::bestBlockHash() const {
+    std::lock_guard<std::mutex>
+        lock(chainMutex_);
+
+    return bestBlockHash_;
+}
+
+
+void Node::setMempoolSize(uint64_t size) {
+    mempoolSize_.store(size);
+}
+
+
+bool Node::electrumConnected() const {
+    return electrum_ &&
+           electrum_->isConnected();
+}
+
+
+// ── chain state update ────────────────────────────────────────────────────────
+
+void Node::updateChainState() {
+
+    if (!electrum_ ||
+        !electrum_->isConnected()) {
+
+        return;
+    }
+
+    const std::string header =
+        electrum_->getBestBlockHeader();
+
+    if (header.empty()) {
+
+        std::cerr
+            << "[Node] Failed to retrieve "
+            << "best block header.\n";
+
+        return;
+    }
+
+    /*
+     * getBestBlockHeader() currently returns the raw
+     * 80-byte block header as hexadecimal.
+     *
+     * It does NOT currently return the Electrum
+     * subscription height, so we deliberately do not
+     * invent or increment bestHeight_ here.
+     *
+     * The next Electrum change will return both:
+     *
+     *   height
+     *   header
+     *
+     * Once that exists, setBestHeight() can track the
+     * real network height.
+     */
+
+    if (header.size() != 160) {
+
+        std::cerr
+            << "[Node] Invalid block header length: "
+            << header.size()
+            << " hex characters.\n";
+
+        return;
+    }
+
+    std::cout
+        << "[Node] Received best block header "
+        << "("
+        << header.size() / 2
+        << " bytes)"
+        << "\n";
 }
 
 // ── peerCount ─────────────────────────────────────────────────────────────────
