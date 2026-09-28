@@ -1,60 +1,981 @@
-/* Bitcoin 2.0max — Kushmanmb.eth — minimal site script */
+/*
+ * Bitcoin 2.0max
+ * Website Dashboard
+ *
+ * The dashboard is ready to connect to the Bitcoin 2.0max
+ * node API once the backend endpoints are implemented.
+ */
 
 (function () {
-  'use strict';
+  "use strict";
 
-  /* ── Sticky nav shadow on scroll ── */
-  var navbar = document.getElementById('navbar');
-  if (navbar) {
-    window.addEventListener('scroll', function () {
-      if (window.scrollY > 10) {
-        navbar.classList.add('scrolled');
-      } else {
-        navbar.classList.remove('scrolled');
+  /*
+   * ========================================================
+   * CONFIGURATION
+   * ========================================================
+   */
+
+  const CONFIG = {
+    // We will change this when our real API is running.
+    apiBaseUrl: "",
+
+    refreshInterval: 15000
+  };
+
+
+  /*
+   * ========================================================
+   * ELEMENTS
+   * ========================================================
+   */
+
+  const navbar = document.getElementById("navbar");
+  const navToggle = document.getElementById("navToggle");
+  const navLinks = document.getElementById("navLinks");
+
+  const nodeStatus = document.getElementById("nodeStatus");
+  const nodeStatusDetail =
+    document.getElementById("nodeStatusDetail");
+
+  const connectionBadge =
+    document.getElementById("connectionBadge");
+
+  const blockHeight =
+    document.getElementById("blockHeight");
+
+  const peerCount =
+    document.getElementById("peerCount");
+
+  const mempoolCount =
+    document.getElementById("mempoolCount");
+
+  const heroBlockHeight =
+    document.getElementById("heroBlockHeight");
+
+  const heroPeers =
+    document.getElementById("heroPeers");
+
+  const heroMempool =
+    document.getElementById("heroMempool");
+
+  const blocksTable =
+    document.getElementById("blocksTable");
+
+  const transactionsTable =
+    document.getElementById("transactionsTable");
+
+  const txSearch =
+    document.getElementById("txSearch");
+
+  const txSearchButton =
+    document.getElementById("txSearchButton");
+
+  const txResult =
+    document.getElementById("txResult");
+
+
+  /*
+   * ========================================================
+   * NAVIGATION
+   * ========================================================
+   */
+
+  function handleScroll() {
+    if (!navbar) {
+      return;
+    }
+
+    if (window.scrollY > 10) {
+      navbar.classList.add("scrolled");
+    } else {
+      navbar.classList.remove("scrolled");
+    }
+  }
+
+
+  window.addEventListener(
+    "scroll",
+    handleScroll,
+    { passive: true }
+  );
+
+
+  if (navToggle && navLinks) {
+
+    navToggle.addEventListener(
+      "click",
+      function () {
+
+        const open =
+          navLinks.classList.toggle("open");
+
+        navToggle.classList.toggle(
+          "open",
+          open
+        );
+
+        navToggle.setAttribute(
+          "aria-expanded",
+          String(open)
+        );
+
       }
-    }, { passive: true });
-  }
+    );
 
-  /* ── Mobile nav toggle ── */
-  var toggle = document.getElementById('navToggle');
-  var navLinks = document.getElementById('navLinks');
-  if (toggle && navLinks) {
-    toggle.addEventListener('click', function () {
-      var open = navLinks.classList.toggle('open');
-      toggle.classList.toggle('open', open);
-      toggle.setAttribute('aria-expanded', String(open));
-    });
 
-    /* Close on link click */
-    navLinks.querySelectorAll('a').forEach(function (link) {
-      link.addEventListener('click', function () {
-        navLinks.classList.remove('open');
-        toggle.classList.remove('open');
-        toggle.setAttribute('aria-expanded', 'false');
+    navLinks
+      .querySelectorAll("a")
+      .forEach(function (link) {
+
+        link.addEventListener(
+          "click",
+          function () {
+
+            navLinks.classList.remove(
+              "open"
+            );
+
+            navToggle.classList.remove(
+              "open"
+            );
+
+            navToggle.setAttribute(
+              "aria-expanded",
+              "false"
+            );
+
+          }
+        );
+
       });
-    });
+
   }
 
-  /* ── Highlight active nav link based on scroll position ── */
-  var sections = document.querySelectorAll('section[id], header[id]');
-  var navAnchors = document.querySelectorAll('.nav__links a[href^="#"]');
 
-  if (sections.length && navAnchors.length) {
-    var observer = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          navAnchors.forEach(function (a) {
-            var href = a.getAttribute('href');
-            if (href === '#' + entry.target.id) {
-              a.style.color = 'var(--color-text)';
-            } else {
-              a.style.color = '';
-            }
-          });
+  /*
+   * ========================================================
+   * HELPERS
+   * ========================================================
+   */
+
+  function shortenHash(hash) {
+
+    if (!hash) {
+      return "—";
+    }
+
+    if (hash.length <= 20) {
+      return hash;
+    }
+
+    return (
+      hash.slice(0, 10) +
+      "…" +
+      hash.slice(-8)
+    );
+
+  }
+
+
+  function formatNumber(value) {
+
+    const number =
+      Number(value);
+
+    if (!Number.isFinite(number)) {
+      return "—";
+    }
+
+    return number.toLocaleString();
+
+  }
+
+
+  function escapeHTML(value) {
+
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+  }
+
+
+  function setText(
+    element,
+    value
+  ) {
+
+    if (element) {
+      element.textContent = value;
+    }
+
+  }
+
+
+  /*
+   * ========================================================
+   * NODE CONNECTION STATUS
+   * ========================================================
+   */
+
+  function setNodeOffline(
+    message = "Waiting for node API"
+  ) {
+
+    if (nodeStatus) {
+
+      nodeStatus.textContent =
+        "OFFLINE";
+
+      nodeStatus.classList.remove(
+        "online"
+      );
+
+    }
+
+
+    setText(
+      nodeStatusDetail,
+      message
+    );
+
+
+    if (connectionBadge) {
+
+      connectionBadge.textContent =
+        "NOT CONNECTED";
+
+      connectionBadge.classList.remove(
+        "online"
+      );
+
+    }
+
+  }
+
+
+  function setNodeOnline() {
+
+    if (nodeStatus) {
+
+      nodeStatus.textContent =
+        "ONLINE";
+
+      nodeStatus.classList.add(
+        "online"
+      );
+
+    }
+
+
+    setText(
+      nodeStatusDetail,
+      "Bitcoin 2.0max node responding"
+    );
+
+
+    if (connectionBadge) {
+
+      connectionBadge.textContent =
+        "CONNECTED";
+
+      connectionBadge.classList.add(
+        "online"
+      );
+
+    }
+
+  }
+
+
+  /*
+   * ========================================================
+   * API
+   * ========================================================
+   */
+
+  async function apiRequest(path) {
+
+    if (!CONFIG.apiBaseUrl) {
+
+      throw new Error(
+        "Bitcoin 2.0max API is not configured yet."
+      );
+
+    }
+
+
+    const base =
+      CONFIG.apiBaseUrl.replace(
+        /\/$/,
+        ""
+      );
+
+
+    const response =
+      await fetch(
+        base + path,
+        {
+          method: "GET",
+
+          headers: {
+            Accept:
+              "application/json"
+          }
         }
-      });
-    }, { rootMargin: '-40% 0px -55% 0px' });
+      );
 
-    sections.forEach(function (s) { observer.observe(s); });
+
+    if (!response.ok) {
+
+      throw new Error(
+        "API returned HTTP " +
+        response.status
+      );
+
+    }
+
+
+    return response.json();
+
   }
+
+
+  /*
+   * ========================================================
+   * NETWORK STATUS
+   * ========================================================
+   */
+
+  function renderNetworkStatus(data) {
+
+    setNodeOnline();
+
+
+    const height =
+      formatNumber(
+        data.height
+      );
+
+
+    const peers =
+      formatNumber(
+        data.peers
+      );
+
+
+    const mempool =
+      formatNumber(
+        data.mempool
+      );
+
+
+    setText(
+      blockHeight,
+      height
+    );
+
+
+    setText(
+      heroBlockHeight,
+      height
+    );
+
+
+    setText(
+      peerCount,
+      peers
+    );
+
+
+    setText(
+      heroPeers,
+      peers
+    );
+
+
+    setText(
+      mempoolCount,
+      mempool
+    );
+
+
+    setText(
+      heroMempool,
+      mempool
+    );
+
+  }
+
+
+  async function loadNetworkStatus() {
+
+    try {
+
+      const data =
+        await apiRequest(
+          "/status"
+        );
+
+
+      renderNetworkStatus(
+        data
+      );
+
+    } catch (error) {
+
+      setNodeOffline(
+        "Node API not connected"
+      );
+
+    }
+
+  }
+
+
+  /*
+   * ========================================================
+   * BLOCKS
+   * ========================================================
+   */
+
+  function renderBlocks(blocks) {
+
+    if (!blocksTable) {
+      return;
+    }
+
+
+    if (
+      !Array.isArray(blocks) ||
+      blocks.length === 0
+    ) {
+
+      blocksTable.innerHTML = `
+        <tr>
+          <td colspan="5">
+            <div class="empty-state">
+              <span>⛓</span>
+              <strong>No blocks available</strong>
+              <small>
+                Waiting for Bitcoin 2.0max block data.
+              </small>
+            </div>
+          </td>
+        </tr>
+      `;
+
+      return;
+
+    }
+
+
+    blocksTable.innerHTML =
+      blocks
+        .map(function (block) {
+
+          const height =
+            formatNumber(
+              block.height
+            );
+
+          const hash =
+            escapeHTML(
+              shortenHash(
+                block.hash
+              )
+            );
+
+          const txCount =
+            formatNumber(
+              block.transactions
+            );
+
+          const time =
+            escapeHTML(
+              block.time || "—"
+            );
+
+          const size =
+            escapeHTML(
+              block.size || "—"
+            );
+
+
+          return `
+            <tr>
+
+              <td>
+                ${height}
+              </td>
+
+              <td>
+                <code title="${escapeHTML(block.hash || "")}">
+                  ${hash}
+                </code>
+              </td>
+
+              <td>
+                ${txCount}
+              </td>
+
+              <td>
+                ${time}
+              </td>
+
+              <td>
+                ${size}
+              </td>
+
+            </tr>
+          `;
+
+        })
+        .join("");
+
+  }
+
+
+  async function loadBlocks() {
+
+    try {
+
+      const data =
+        await apiRequest(
+          "/blocks"
+        );
+
+
+      renderBlocks(
+        data.blocks || data
+      );
+
+    } catch (error) {
+
+      /*
+       * Leave the honest waiting message
+       * visible until the API exists.
+       */
+
+    }
+
+  }
+
+
+  /*
+   * ========================================================
+   * RECENT TRANSACTIONS
+   * ========================================================
+   */
+
+  function renderTransactions(
+    transactions
+  ) {
+
+    if (!transactionsTable) {
+      return;
+    }
+
+
+    if (
+      !Array.isArray(
+        transactions
+      ) ||
+      transactions.length === 0
+    ) {
+
+      transactionsTable.innerHTML = `
+        <tr>
+          <td colspan="4">
+
+            <div class="empty-state">
+
+              <span>₿</span>
+
+              <strong>
+                No transactions available
+              </strong>
+
+              <small>
+                Waiting for network transactions.
+              </small>
+
+            </div>
+
+          </td>
+        </tr>
+      `;
+
+      return;
+
+    }
+
+
+    transactionsTable.innerHTML =
+      transactions
+        .map(function (tx) {
+
+          const txid =
+            escapeHTML(
+              shortenHash(
+                tx.txid
+              )
+            );
+
+          const status =
+            escapeHTML(
+              tx.status ||
+              "unknown"
+            );
+
+          const block =
+            tx.blockHeight ??
+            tx.block ??
+            "—";
+
+          const value =
+            escapeHTML(
+              tx.value ??
+              "—"
+            );
+
+
+          return `
+            <tr>
+
+              <td>
+                <code title="${escapeHTML(tx.txid || "")}">
+                  ${txid}
+                </code>
+              </td>
+
+              <td>
+                ${status}
+              </td>
+
+              <td>
+                ${escapeHTML(block)}
+              </td>
+
+              <td>
+                ${value}
+              </td>
+
+            </tr>
+          `;
+
+        })
+        .join("");
+
+  }
+
+
+  async function loadTransactions() {
+
+    try {
+
+      const data =
+        await apiRequest(
+          "/transactions"
+        );
+
+
+      renderTransactions(
+        data.transactions ||
+        data
+      );
+
+    } catch (error) {
+
+      /*
+       * API is not available yet.
+       */
+
+    }
+
+  }
+
+
+  /*
+   * ========================================================
+   * TRANSACTION SEARCH
+   * ========================================================
+   */
+
+  function showTransactionMessage(
+    title,
+    message
+  ) {
+
+    if (!txResult) {
+      return;
+    }
+
+
+    txResult.innerHTML = `
+      <div class="empty-state">
+
+        <span>₿</span>
+
+        <strong>
+          ${escapeHTML(title)}
+        </strong>
+
+        <small>
+          ${escapeHTML(message)}
+        </small>
+
+      </div>
+    `;
+
+  }
+
+
+  function renderTransaction(
+    tx
+  ) {
+
+    if (!txResult) {
+      return;
+    }
+
+
+    const txid =
+      escapeHTML(
+        tx.txid || "—"
+      );
+
+
+    const status =
+      escapeHTML(
+        tx.status ||
+        "unknown"
+      );
+
+
+    const block =
+      escapeHTML(
+        tx.blockHeight ??
+        tx.block ??
+        "—"
+      );
+
+
+    const value =
+      escapeHTML(
+        tx.value ??
+        "—"
+      );
+
+
+    txResult.innerHTML = `
+      <div
+        style="
+          padding: 24px;
+          overflow-wrap: anywhere;
+        "
+      >
+
+        <div
+          style="
+            color: var(--orange);
+            font-size: .7rem;
+            font-weight: 900;
+            letter-spacing: .12em;
+            margin-bottom: 10px;
+          "
+        >
+          TRANSACTION
+        </div>
+
+        <strong>
+          ${txid}
+        </strong>
+
+        <div
+          style="
+            display: grid;
+            grid-template-columns:
+              repeat(
+                auto-fit,
+                minmax(150px, 1fr)
+              );
+            gap: 12px;
+            margin-top: 20px;
+          "
+        >
+
+          <div>
+            <small>
+              STATUS
+            </small>
+            <br>
+            ${status}
+          </div>
+
+          <div>
+            <small>
+              BLOCK
+            </small>
+            <br>
+            ${block}
+          </div>
+
+          <div>
+            <small>
+              VALUE
+            </small>
+            <br>
+            ${value}
+          </div>
+
+        </div>
+
+      </div>
+    `;
+
+  }
+
+
+  async function searchTransaction() {
+
+    if (!txSearch) {
+      return;
+    }
+
+
+    const txid =
+      txSearch.value.trim();
+
+
+    if (!txid) {
+
+      showTransactionMessage(
+        "Transaction ID required",
+        "Enter a Bitcoin 2.0max transaction ID."
+      );
+
+      return;
+
+    }
+
+
+    showTransactionMessage(
+      "Searching...",
+      shortenHash(txid)
+    );
+
+
+    try {
+
+      const tx =
+        await apiRequest(
+          "/transaction/" +
+          encodeURIComponent(
+            txid
+          )
+        );
+
+
+      renderTransaction(
+        tx
+      );
+
+    } catch (error) {
+
+      if (!CONFIG.apiBaseUrl) {
+
+        showTransactionMessage(
+          "Node API not connected",
+          "Transaction lookup will become active when the Bitcoin 2.0max node API is running."
+        );
+
+        return;
+
+      }
+
+
+      showTransactionMessage(
+        "Transaction not found",
+        error.message
+      );
+
+    }
+
+  }
+
+
+  if (
+    txSearchButton &&
+    txSearch
+  ) {
+
+    txSearchButton.addEventListener(
+      "click",
+      searchTransaction
+    );
+
+
+    txSearch.addEventListener(
+      "keydown",
+      function (event) {
+
+        if (
+          event.key ===
+          "Enter"
+        ) {
+
+          searchTransaction();
+
+        }
+
+      }
+    );
+
+  }
+
+
+  /*
+   * ========================================================
+   * DASHBOARD REFRESH
+   * ========================================================
+   */
+
+  async function refreshDashboard() {
+
+    await Promise.allSettled([
+      loadNetworkStatus(),
+      loadBlocks(),
+      loadTransactions()
+    ]);
+
+  }
+
+
+  /*
+   * Initial load
+   */
+
+  handleScroll();
+
+  refreshDashboard();
+
+
+  /*
+   * Only poll when an API has
+   * actually been configured.
+   */
+
+  if (CONFIG.apiBaseUrl) {
+
+    window.setInterval(
+      refreshDashboard,
+      CONFIG.refreshInterval
+    );
+
+  }
+
 })();
