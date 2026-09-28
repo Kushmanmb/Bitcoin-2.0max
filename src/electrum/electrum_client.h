@@ -46,6 +46,10 @@ public:
     /// Returns the raw hex header, or empty on error.
     std::string getBestBlockHeader();
 
+uint64_t getBestBlockHeight();
+
+std::string getBestBlockHeaderHex();
+
     /// blockchain.transaction.get — fetch a raw transaction by txid.
     /// Returns raw hex, or empty on error.
     std::string getTransaction(const std::string& txid);
