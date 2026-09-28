@@ -256,7 +256,6 @@ std::string ElectrumClient::getBestBlockHeaderHex() {
         quoteEnd - quoteStart - 1
     );
 }
-}
 
 std::string ElectrumClient::getTransaction(const std::string& txid) {
     std::string req = buildRequest("blockchain.transaction.get",
