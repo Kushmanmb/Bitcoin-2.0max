@@ -151,6 +151,110 @@ std::string ElectrumClient::serverVersion() {
 std::string ElectrumClient::getBestBlockHeader() {
     std::string req = buildRequest("blockchain.headers.subscribe");
     return sendRequest(req);
+    uint64_t ElectrumClient::getBestBlockHeight() {
+    const std::string response =
+        getBestBlockHeader();
+
+    if (response.empty()) {
+        return 0;
+    }
+
+    const std::string key = "\"height\"";
+    const std::size_t keyPos =
+        response.find(key);
+
+    if (keyPos == std::string::npos) {
+        std::cerr
+            << "[Electrum] Header response has no height.\n";
+        return 0;
+    }
+
+    const std::size_t colonPos =
+        response.find(':', keyPos + key.size());
+
+    if (colonPos == std::string::npos) {
+        return 0;
+    }
+
+    std::size_t start =
+        response.find_first_of(
+            "0123456789",
+            colonPos + 1
+        );
+
+    if (start == std::string::npos) {
+        return 0;
+    }
+
+    const std::size_t end =
+        response.find_first_not_of(
+            "0123456789",
+            start
+        );
+
+    try {
+        return std::stoull(
+            response.substr(
+                start,
+                end - start
+            )
+        );
+    } catch (const std::exception& e) {
+        std::cerr
+            << "[Electrum] Invalid block height: "
+            << e.what()
+            << "\n";
+
+        return 0;
+    }
+}
+
+
+std::string ElectrumClient::getBestBlockHeaderHex() {
+    const std::string response =
+        getBestBlockHeader();
+
+    if (response.empty()) {
+        return {};
+    }
+
+    const std::string key = "\"hex\"";
+    const std::size_t keyPos =
+        response.find(key);
+
+    if (keyPos == std::string::npos) {
+        std::cerr
+            << "[Electrum] Header response has no hex field.\n";
+
+        return {};
+    }
+
+    const std::size_t colonPos =
+        response.find(':', keyPos + key.size());
+
+    if (colonPos == std::string::npos) {
+        return {};
+    }
+
+    const std::size_t quoteStart =
+        response.find('"', colonPos + 1);
+
+    if (quoteStart == std::string::npos) {
+        return {};
+    }
+
+    const std::size_t quoteEnd =
+        response.find('"', quoteStart + 1);
+
+    if (quoteEnd == std::string::npos) {
+        return {};
+    }
+
+    return response.substr(
+        quoteStart + 1,
+        quoteEnd - quoteStart - 1
+    );
+}
 }
 
 std::string ElectrumClient::getTransaction(const std::string& txid) {
