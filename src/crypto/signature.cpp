@@ -21,7 +21,9 @@
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/obj_mac.h>
+#if !defined(OPENSSL_NO_RIPEMD)
 #include <openssl/ripemd.h>
+#endif
 #include <openssl/sha.h>
 
 #include <algorithm>
@@ -80,7 +82,25 @@ static std::array<uint8_t, 32> doubleSHA256(const uint8_t* data, size_t len) {
 static std::array<uint8_t, 20> ripemd160(const uint8_t* data, size_t len) {
     std::array<uint8_t, 20> out{};
     if (!data && len != 0) return out;
+
+#if defined(OPENSSL_NO_RIPEMD)
+    unsigned int outLen = static_cast<unsigned int>(out.size());
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    const EVP_MD* md = EVP_get_digestbyname("RIPEMD160");
+    if (!ctx || !md) {
+        EVP_MD_CTX_free(ctx);
+        return out;
+    }
+    if (EVP_DigestInit_ex(ctx, md, nullptr) != 1 ||
+        EVP_DigestUpdate(ctx, data, len) != 1 ||
+        EVP_DigestFinal_ex(ctx, out.data(), &outLen) != 1) {
+        EVP_MD_CTX_free(ctx);
+        return out;
+    }
+    EVP_MD_CTX_free(ctx);
+#else
     RIPEMD160(data, len, out.data());
+#endif
     return out;
 }
 
