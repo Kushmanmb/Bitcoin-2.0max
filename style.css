@@ -1,0 +1,15 @@
+.site-header {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px 20px;
+  background: #000;
+}
+
+.bitcoin-logo {
+  display: block;
+  width: min(900px, 95%);
+  height: auto;
+  object-fit: contain;
+}
