@@ -2,37 +2,55 @@
 # Maps labels to file glob patterns
 
 "area: core":
-  - src/node/**
-  - include/bitcoin2max/**
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/node/**
+          - include/bitcoin2max/**
 
 "area: crypto":
-  - src/crypto/**
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/crypto/**
 
 "area: electrum":
-  - src/electrum/**
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/electrum/**
 
 "area: config":
-  - src/config/**
-  - conf/**
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/config/**
+          - conf/**
 
 "area: build":
-  - CMakeLists.txt
-  - cmake/**
-  - Dockerfile
-  - "**/*.cmake"
+  - changed-files:
+      - any-glob-to-any-file:
+          - CMakeLists.txt
+          - cmake/**
+          - Dockerfile
+          - "**/*.cmake"
 
 "area: tests":
-  - tests/**
+  - changed-files:
+      - any-glob-to-any-file:
+          - tests/**
 
 "area: ci":
-  - .github/workflows/**
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/**
 
 "area: docs":
-  - "*.md"
-  - docs/**
-  - .github/ISSUE_TEMPLATE/**
-  - .github/PULL_REQUEST_TEMPLATE.md
+  - changed-files:
+      - any-glob-to-any-file:
+          - "*.md"
+          - docs/**
+          - .github/ISSUE_TEMPLATE/**
+          - .github/PULL_REQUEST_TEMPLATE.md
 
 "area: packaging":
-  - .github/workflows/release.yml
-  - Dockerfile
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/release.yml
+          - Dockerfile
