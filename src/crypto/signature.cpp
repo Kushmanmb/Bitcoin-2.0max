@@ -21,7 +21,7 @@
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/obj_mac.h>
-#include <openssl/provider.h>
+#include <openssl/ripemd.h>
 #include <openssl/sha.h>
 
 #include <algorithm>
@@ -74,37 +74,13 @@ static std::array<uint8_t, 32> doubleSHA256(const uint8_t* data, size_t len) {
     return sha256Once(h1.data(), 32);
 }
 
-// RIPEMD-160 via EVP (compatible with both OpenSSL 1.1.x and 3.x).
-// On OpenSSL 3.x, RIPEMD-160 lives in the legacy provider which must be
-// loaded explicitly on distributions (e.g. Ubuntu 22.04) that don't enable
-// it in their openssl.cnf by default.
+// RIPEMD-160 via low-level OpenSSL API.
+// This avoids runtime provider loading on OpenSSL 3.0.x (notably on
+// Ubuntu 22.04) and keeps the hashing path stable across 1.1.x/3.x.
 static std::array<uint8_t, 20> ripemd160(const uint8_t* data, size_t len) {
     std::array<uint8_t, 20> out{};
-    unsigned int outLen = static_cast<unsigned int>(out.size());
-
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    const EVP_MD* md = EVP_get_digestbyname("RIPEMD160");
-    if (!md) {
-        // RIPEMD-160 has been moved to the legacy provider in OpenSSL 3.x.
-        // On OpenSSL 3.0.x before 3.0.7, calling OSSL_PROVIDER_load for
-        // "legacy" without first explicitly loading "default" can crash
-        // because the library context is not yet fully initialized.
-        // Load "default" first to ensure the context is ready, then load
-        // "legacy".  Both calls are idempotent (they increment the refcount
-        // if the provider is already loaded) and the handles intentionally
-        // persist until process exit, which is the standard OpenSSL practice.
-        static OSSL_PROVIDER* defaultProv = OSSL_PROVIDER_load(nullptr, "default");
-        static OSSL_PROVIDER* legacyProv  = OSSL_PROVIDER_load(nullptr, "legacy");
-        (void)defaultProv;
-        (void)legacyProv;
-        md = EVP_get_digestbyname("RIPEMD160");
-    }
-    if (ctx && md) {
-        EVP_DigestInit_ex(ctx, md, nullptr);
-        EVP_DigestUpdate(ctx, data, len);
-        EVP_DigestFinal_ex(ctx, out.data(), &outLen);
-    }
-    EVP_MD_CTX_free(ctx);
+    if (!data && len != 0) return out;
+    RIPEMD160(data, len, out.data());
     return out;
 }
 
