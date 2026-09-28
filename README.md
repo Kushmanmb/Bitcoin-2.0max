@@ -165,6 +165,11 @@ docker pull ghcr.io/kushmanmb/bitcoin-2.0max:latest
 
 See [ROADMAP.md](ROADMAP.md) for planned milestones and upcoming features.
 
+## Manifesto
+
+See [MANIFESTO.md](MANIFESTO.md) for the project mission, principles, and
+commitments.
+
 ## Contributing
 
 1. Fork the repository and create your branch from `main`.
