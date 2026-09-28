@@ -150,7 +150,8 @@ std::string ElectrumClient::serverVersion() {
 
 std::string ElectrumClient::getBestBlockHeader() {
     std::string req = buildRequest("blockchain.headers.subscribe");
-    return sendRequest(req);
+   return sendRequest(req);
+}
     uint64_t ElectrumClient::getBestBlockHeight() {
     const std::string response =
         getBestBlockHeader();
