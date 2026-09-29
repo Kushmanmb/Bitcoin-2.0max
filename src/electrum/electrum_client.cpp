@@ -210,7 +210,15 @@ std::string ElectrumClient::getBestBlockHeader() {
     }
 }
 
+std::string ElectrumClient::getBlockHeaderHex(uint64_t height) {
+    const std::string req =
+        buildRequest(
+            "blockchain.block.header",
+            "[" + std::to_string(height) + "]"
+        );
 
+    return sendRequest(req);
+}
 std::string ElectrumClient::getBestBlockHeaderHex() {
     const std::string response =
         getBestBlockHeader();
