@@ -1,5 +1,6 @@
 #include "api/http_server.h"
 #include "api/status_api.h"
+#include "api/blocks_api.h"
 #include "config/config.h"
 #include "node/node.h"
 
@@ -16,9 +17,13 @@ TEST_CASE("HttpServer serves status endpoint") {
     bitcoin2max::Config config;
     bitcoin2max::Node node(config);
     bitcoin2max::StatusApi statusApi(node);
+bitcoin2max::BlocksApi blocksApi(node);
 
-    // Use a test-only port so we don't interfere with the normal API.
-    bitcoin2max::HttpServer server(statusApi, 18080);
+bitcoin2max::HttpServer server(
+    statusApi,
+    blocksApi,
+    18080
+);
 
     REQUIRE(server.start());
 
