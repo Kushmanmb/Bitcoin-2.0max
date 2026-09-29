@@ -58,6 +58,74 @@ bitcoin2max::HttpServer server(
     }
 
     ::close(fd);
+    // Test GET /blocks
+int blocksFd = ::socket(AF_INET, SOCK_STREAM, 0);
+REQUIRE(blocksFd >= 0);
+
+sockaddr_in blocksAddress{};
+blocksAddress.sin_family = AF_INET;
+blocksAddress.sin_port = htons(18080);
+
+REQUIRE(
+    ::inet_pton(
+        AF_INET,
+        "127.0.0.1",
+        &blocksAddress.sin_addr
+    ) == 1
+);
+
+REQUIRE(
+    ::connect(
+        blocksFd,
+        reinterpret_cast<sockaddr*>(&blocksAddress),
+        sizeof(blocksAddress)
+    ) == 0
+);
+
+const std::string blocksRequest =
+    "GET /blocks HTTP/1.1\r\n"
+    "Host: 127.0.0.1\r\n"
+    "Connection: close\r\n\r\n";
+
+REQUIRE(
+    ::send(
+        blocksFd,
+        blocksRequest.data(),
+        blocksRequest.size(),
+        0
+    ) >= 0
+);
+
+std::string blocksResponse;
+char blocksBuffer[4096];
+
+ssize_t blocksCount;
+
+while (
+    (blocksCount = ::recv(
+        blocksFd,
+        blocksBuffer,
+        sizeof(blocksBuffer),
+        0
+    )) > 0
+) {
+    blocksResponse.append(
+        blocksBuffer,
+        static_cast<std::size_t>(blocksCount)
+    );
+}
+
+::close(blocksFd);
+
+REQUIRE(
+    blocksResponse.find("HTTP/1.1 200 OK") !=
+    std::string::npos
+);
+
+REQUIRE(
+    blocksResponse.find("application/json") !=
+    std::string::npos
+);
     server.stop();
 
     REQUIRE(response.find("HTTP/1.1 200 OK") != std::string::npos);
