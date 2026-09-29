@@ -39,7 +39,10 @@ target_link_libraries(bitcoin2max_tests
 # Pull in the implementation objects we want to test
 target_sources(bitcoin2max_tests
     PRIVATE
+        target_sources(bitcoin2max_tests
+    PRIVATE
         ${CMAKE_SOURCE_DIR}/src/api/status_api.cpp
+        ${CMAKE_SOURCE_DIR}/src/api/blocks_api.cpp
         ${CMAKE_SOURCE_DIR}/src/api/http_server.cpp
         ${CMAKE_SOURCE_DIR}/src/node/node.cpp
         ${CMAKE_SOURCE_DIR}/src/electrum/electrum_client.cpp
