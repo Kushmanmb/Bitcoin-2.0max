@@ -82,23 +82,19 @@ static std::array<uint8_t, 20> ripemd160(const uint8_t* data, size_t len) {
     std::array<uint8_t, 20> out{};
     unsigned int outLen = static_cast<unsigned int>(out.size());
 
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    const EVP_MD* md = EVP_get_digestbyname("RIPEMD160");
-    if (!md) {
-        // RIPEMD-160 has been moved to the legacy provider in OpenSSL 3.x.
-        // On OpenSSL 3.0.x before 3.0.7, calling OSSL_PROVIDER_load for
-        // "legacy" without first explicitly loading "default" can crash
-        // because the library context is not yet fully initialized.
-        // Load "default" first to ensure the context is ready, then load
-        // "legacy".  Both calls are idempotent (they increment the refcount
-        // if the provider is already loaded) and the handles intentionally
-        // persist until process exit, which is the standard OpenSSL practice.
-        static OSSL_PROVIDER* defaultProv = OSSL_PROVIDER_load(nullptr, "default");
-        static OSSL_PROVIDER* legacyProv  = OSSL_PROVIDER_load(nullptr, "legacy");
-        (void)defaultProv;
-        (void)legacyProv;
-        md = EVP_get_digestbyname("RIPEMD160");
-    }
+// OpenSSL 3.x requires RIPEMD-160 from the legacy provider.
+// Load the default provider first, then legacy, before looking up
+// the digest implementation.
+static OSSL_PROVIDER* defaultProv =
+    OSSL_PROVIDER_load(nullptr, "default");
+static OSSL_PROVIDER* legacyProv =
+    OSSL_PROVIDER_load(nullptr, "legacy");
+
+(void)defaultProv;
+(void)legacyProv;
+
+EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+const EVP_MD* md = EVP_get_digestbyname("RIPEMD160");
     if (ctx && md) {
         EVP_DigestInit_ex(ctx, md, nullptr);
         EVP_DigestUpdate(ctx, data, len);
