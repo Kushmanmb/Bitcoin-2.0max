@@ -217,7 +217,46 @@ std::string ElectrumClient::getBlockHeaderHex(uint64_t height) {
             "[" + std::to_string(height) + "]"
         );
 
-    return sendRequest(req);
+    const std::string response = sendRequest(req);
+
+    if (response.empty()) {
+        return {};
+    }
+
+    const std::string key = "\"result\"";
+    const std::size_t keyPos = response.find(key);
+
+    if (keyPos == std::string::npos) {
+        std::cerr
+            << "[Electrum] Block header response has no result.\n";
+        return {};
+    }
+
+    const std::size_t colonPos =
+        response.find(':', keyPos + key.size());
+
+    if (colonPos == std::string::npos) {
+        return {};
+    }
+
+    const std::size_t quoteStart =
+        response.find('"', colonPos + 1);
+
+    if (quoteStart == std::string::npos) {
+        return {};
+    }
+
+    const std::size_t quoteEnd =
+        response.find('"', quoteStart + 1);
+
+    if (quoteEnd == std::string::npos) {
+        return {};
+    }
+
+    return response.substr(
+        quoteStart + 1,
+        quoteEnd - quoteStart - 1
+    );
 }
 std::string ElectrumClient::getBestBlockHeaderHex() {
     const std::string response =
