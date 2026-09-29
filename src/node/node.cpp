@@ -160,7 +160,7 @@ std::string Node::bestBlockHash() const {
 
     return bestBlockHash_;
 }
-std::string Node::getBlockHeaderHex(uint64_t height) {
+std::string Node::getBlockHeaderHex(uint64_t height) const {
     if (!electrum_ || !electrum_->isConnected()) {
         return {};
     }
