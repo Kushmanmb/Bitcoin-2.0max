@@ -357,7 +357,7 @@
 
     const height =
       formatNumber(
-        data.height
+        data.blockheight
       );
 
 
