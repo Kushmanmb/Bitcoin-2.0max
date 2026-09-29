@@ -271,8 +271,13 @@ static EC_KEY* recoverPublicKey(const BIGNUM* r,
         EC_GROUP_free(group);
         return nullptr;
     }
-    EC_KEY_set_group(key, group);
-    EC_KEY_set_public_key(key, Q);
+    if (EC_KEY_set_group(key, group) != 1 ||
+    EC_KEY_set_public_key(key, Q) != 1) {
+    EC_KEY_free(key);
+    EC_POINT_free(Q);
+    EC_GROUP_free(group);
+    return nullptr;
+}
     EC_KEY_set_conv_form(key, compressed ? POINT_CONVERSION_COMPRESSED
                                          : POINT_CONVERSION_UNCOMPRESSED);
 
