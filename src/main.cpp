@@ -6,7 +6,7 @@
 
 #include "config/config.h"
 #include "node/node.h"
-
+#include "api/status_api.h"
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
@@ -50,6 +50,8 @@ int main(int argc, char* argv[]) {
 
     bitcoin2max::Node node(cfg);
     g_node = &node;
+    
+    bitcoin2max::StatusApi statusApi(node);
 
     std::signal(SIGINT,  handleSignal);
     std::signal(SIGTERM, handleSignal);
