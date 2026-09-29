@@ -1495,3 +1495,10 @@ pre code {
   }
 
 }
+.footer-signature {
+  display: block;
+  width: min(320px, 80vw);
+  height: auto;
+  margin: 12px auto 0;
+  object-fit: contain;
+}
