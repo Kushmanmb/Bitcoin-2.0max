@@ -15,10 +15,6 @@ std::string BlocksApi::getBlocksJson(std::size_t limit) const {
     const uint64_t height = node_.bestHeight();
     const std::string bestHash = node_.bestBlockHash();
 
-    const std::string headerHex =
-    node_.getBlockHeaderHex(height);
-    json << "[";
-
     if (height > 0 && limit > 0) {
     const std::string headerHex =
         node_.getBlockHeaderHex(height);
