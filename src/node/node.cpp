@@ -160,7 +160,13 @@ std::string Node::bestBlockHash() const {
 
     return bestBlockHash_;
 }
+std::string Node::getBlockHeaderHex(uint64_t height) {
+    if (!electrum_ || !electrum_->isConnected()) {
+        return {};
+    }
 
+    return electrum_->getBlockHeaderHex(height);
+}
 
 void Node::setMempoolSize(uint64_t size) {
     mempoolSize_.store(size);
