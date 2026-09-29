@@ -109,8 +109,14 @@ void HttpServer::run() {
         }
 
         char request[4096]{};
+
         const ssize_t received =
-            ::recv(client, request, sizeof(request) - 1, 0);
+            ::recv(
+                client,
+                request,
+                sizeof(request) - 1,
+                0
+            );
 
         if (received > 0) {
             request[received] = '\0';
@@ -118,21 +124,8 @@ void HttpServer::run() {
             const std::string req(request);
 
             if (req.rfind("GET /status ", 0) == 0) {
-                else if (req.rfind("GET /blocks ", 0) == 0) {
-    const std::string body = blocksApi_.getBlocksJson();
-
-    const std::string response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: application/json\r\n"
-        "Cache-Control: no-store\r\n"
-        "Connection: close\r\n"
-        "Content-Length: " +
-        std::to_string(body.size()) +
-        "\r\n\r\n" + body;
-
-    ::send(client, response.data(), response.size(), 0);
-}
-                const std::string body = statusApi_.getStatusJson();
+                const std::string body =
+                    statusApi_.getStatusJson();
 
                 const std::string response =
                     "HTTP/1.1 200 OK\r\n"
@@ -141,10 +134,38 @@ void HttpServer::run() {
                     "Connection: close\r\n"
                     "Content-Length: " +
                     std::to_string(body.size()) +
-                    "\r\n\r\n" + body;
+                    "\r\n\r\n" +
+                    body;
 
-                ::send(client, response.data(), response.size(), 0);
-            } else {
+                ::send(
+                    client,
+                    response.data(),
+                    response.size(),
+                    0
+                );
+            }
+            else if (req.rfind("GET /blocks ", 0) == 0) {
+                const std::string body =
+                    blocksApi_.getBlocksJson();
+
+                const std::string response =
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: application/json\r\n"
+                    "Cache-Control: no-store\r\n"
+                    "Connection: close\r\n"
+                    "Content-Length: " +
+                    std::to_string(body.size()) +
+                    "\r\n\r\n" +
+                    body;
+
+                ::send(
+                    client,
+                    response.data(),
+                    response.size(),
+                    0
+                );
+            }
+            else {
                 const std::string body =
                     "{\"error\":\"not found\"}";
 
@@ -154,9 +175,15 @@ void HttpServer::run() {
                     "Connection: close\r\n"
                     "Content-Length: " +
                     std::to_string(body.size()) +
-                    "\r\n\r\n" + body;
+                    "\r\n\r\n" +
+                    body;
 
-                ::send(client, response.data(), response.size(), 0);
+                ::send(
+                    client,
+                    response.data(),
+                    response.size(),
+                    0
+                );
             }
         }
 
