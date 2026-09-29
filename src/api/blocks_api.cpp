@@ -17,8 +17,6 @@ const std::string bestHash = node_.bestBlockHash();
 
 json << "[";
 
-if (height > 0 && limit > 0) {
-
     if (height > 0 && limit > 0) {
     const std::string headerHex =
         node_.getBlockHeaderHex(height);
