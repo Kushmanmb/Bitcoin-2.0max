@@ -140,6 +140,38 @@ std::string ElectrumClient::buildRequest(const std::string& method,
     return oss.str();
 }
 
+std::string ElectrumClient::extractStringResult(const std::string& response) {
+    const std::string key = "\"result\"";
+    const std::size_t keyPos = response.find(key);
+    if (keyPos == std::string::npos) {
+        return {};
+    }
+
+    const std::size_t colonPos = response.find(':', keyPos + key.size());
+    if (colonPos == std::string::npos) {
+        return {};
+    }
+
+    const std::size_t valueStart =
+        response.find_first_not_of(" \t\n\r", colonPos + 1);
+    if (valueStart == std::string::npos || response[valueStart] != '"') {
+        return {};
+    }
+
+    bool escaped = false;
+    for (std::size_t i = valueStart + 1; i < response.size(); ++i) {
+        if (escaped) {
+            escaped = false;
+        } else if (response[i] == '\\') {
+            escaped = true;
+        } else if (response[i] == '"') {
+            return response.substr(valueStart + 1, i - valueStart - 1);
+        }
+    }
+
+    return {};
+}
+
 // ── Electrum protocol methods ─────────────────────────────────────────────────
 
 std::string ElectrumClient::serverVersion() {
@@ -223,40 +255,14 @@ std::string ElectrumClient::getBlockHeaderHex(uint64_t height) {
         return {};
     }
 
-    const std::string key = "\"result\"";
-    const std::size_t keyPos = response.find(key);
-
-    if (keyPos == std::string::npos) {
+    const std::string result = extractStringResult(response);
+    if (result.empty()) {
         std::cerr
             << "[Electrum] Block header response has no result.\n";
         return {};
     }
 
-    const std::size_t colonPos =
-        response.find(':', keyPos + key.size());
-
-    if (colonPos == std::string::npos) {
-        return {};
-    }
-
-    const std::size_t quoteStart =
-        response.find('"', colonPos + 1);
-
-    if (quoteStart == std::string::npos) {
-        return {};
-    }
-
-    const std::size_t quoteEnd =
-        response.find('"', quoteStart + 1);
-
-    if (quoteEnd == std::string::npos) {
-        return {};
-    }
-
-    return response.substr(
-        quoteStart + 1,
-        quoteEnd - quoteStart - 1
-    );
+    return result;
 }
 std::string ElectrumClient::getBestBlockHeaderHex() {
     const std::string response =
