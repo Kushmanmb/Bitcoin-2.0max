@@ -42,6 +42,7 @@ find_package(Boost 1.71 COMPONENTS system)
 # ── Source files ──────────────────────────────────────────────────────────────
 set(BITCOIN2MAX_SOURCES
     src/main.cpp
+    src/api/status_api.cpp
     src/config/config.cpp
     src/node/node.cpp
     src/electrum/electrum_client.cpp
