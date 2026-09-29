@@ -11,6 +11,7 @@ FetchContent_MakeAvailable(Catch2)
 
 # ── Test sources ─────────────────────────────────────────────────────────────
 add_executable(bitcoin2max_tests
+    test_http_server.cpp
     test_config.cpp
     test_elliptic_curve.cpp
     test_params.cpp
@@ -39,6 +40,7 @@ target_link_libraries(bitcoin2max_tests
 target_sources(bitcoin2max_tests
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src/api/status_api.cpp
+        ${CMAKE_SOURCE_DIR}/src/api/http_server.cpp
         ${CMAKE_SOURCE_DIR}/src/node/node.cpp
         ${CMAKE_SOURCE_DIR}/src/electrum/electrum_client.cpp
         ${CMAKE_SOURCE_DIR}/src/config/config.cpp
