@@ -7,6 +7,7 @@
 #include "config/config.h"
 #include "node/node.h"
 #include "api/status_api.h"
+#include "api/http_server.h"
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
@@ -52,12 +53,21 @@ int main(int argc, char* argv[]) {
     g_node = &node;
     
     bitcoin2max::StatusApi statusApi(node);
+    bitcoin2max::HttpServer httpServer(statusApi, 8080);
 
     std::signal(SIGINT,  handleSignal);
     std::signal(SIGTERM, handleSignal);
 
     node.start();
-    node.join();
+
+if (!httpServer.start()) {
+    std::cerr << "[main] Failed to start HTTP status server.\n";
+    node.stop();
+    return EXIT_FAILURE;
+}
+
+node.join();
+httpServer.stop();
 
     std::cout << "[main] Exited cleanly.\n";
     return EXIT_SUCCESS;
