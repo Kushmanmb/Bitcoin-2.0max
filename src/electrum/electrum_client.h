@@ -68,6 +68,9 @@ private:
     int           fd_{-1};
     uint64_t      nextId_{1};
 
+static std::string extractStringResult(
+    const std::string& response
+);
     /// Send a raw JSON-RPC request and return the full response string.
     std::string sendRequest(const std::string& json);
 
