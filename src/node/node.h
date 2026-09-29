@@ -72,7 +72,7 @@ public:
     );
 
     std::string bestBlockHash() const;
-
+    std::string getBlockHeaderHex(uint64_t height);
 
     // =====================================================
     // MEMPOOL STATE
