@@ -1,6 +1,6 @@
 #include "http_server.h"
 #include "status_api.h"
-
+#include "blocks_api.h"
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
@@ -11,8 +11,14 @@
 
 namespace bitcoin2max {
 
-HttpServer::HttpServer(const StatusApi& statusApi, uint16_t port)
-    : statusApi_(statusApi), port_(port) {}
+HttpServer::HttpServer(
+    const StatusApi& statusApi,
+    const BlocksApi& blocksApi,
+    uint16_t port
+)
+    : statusApi_(statusApi),
+      blocksApi_(blocksApi),
+      port_(port) {}
 
 HttpServer::~HttpServer() {
     stop();
@@ -112,6 +118,20 @@ void HttpServer::run() {
             const std::string req(request);
 
             if (req.rfind("GET /status ", 0) == 0) {
+                else if (req.rfind("GET /blocks ", 0) == 0) {
+    const std::string body = blocksApi_.getBlocksJson();
+
+    const std::string response =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: application/json\r\n"
+        "Cache-Control: no-store\r\n"
+        "Connection: close\r\n"
+        "Content-Length: " +
+        std::to_string(body.size()) +
+        "\r\n\r\n" + body;
+
+    ::send(client, response.data(), response.size(), 0);
+}
                 const std::string body = statusApi_.getStatusJson();
 
                 const std::string response =
