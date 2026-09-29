@@ -7,10 +7,16 @@
 namespace bitcoin2max {
 
 class StatusApi;
+class BlocksApi;
 
 class HttpServer {
 public:
-    HttpServer(const StatusApi& statusApi, uint16_t port = 8080);
+    HttpServer(
+        const StatusApi& statusApi,
+        const BlocksApi& blocksApi,
+        uint16_t port = 8080
+    );
+
     ~HttpServer();
 
     HttpServer(const HttpServer&) = delete;
@@ -24,6 +30,8 @@ private:
     void run();
 
     const StatusApi& statusApi_;
+    const BlocksApi& blocksApi_;
+
     uint16_t port_;
     std::atomic<bool> running_{false};
     int serverFd_{-1};
