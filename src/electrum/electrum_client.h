@@ -47,7 +47,7 @@ public:
     std::string getBestBlockHeader();
 
 uint64_t getBestBlockHeight();
-
+std::string getBlockHeaderHex(uint64_t height);
 std::string getBestBlockHeaderHex();
 
     /// blockchain.transaction.get — fetch a raw transaction by txid.
