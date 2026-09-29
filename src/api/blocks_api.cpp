@@ -13,7 +13,11 @@ std::string BlocksApi::getBlocksJson(std::size_t limit) const {
     std::ostringstream json;
 
     const uint64_t height = node_.bestHeight();
-    const std::string bestHash = node_.bestBlockHash();
+const std::string bestHash = node_.bestBlockHash();
+
+json << "[";
+
+if (height > 0 && limit > 0) {
 
     if (height > 0 && limit > 0) {
     const std::string headerHex =
