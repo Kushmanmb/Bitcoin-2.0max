@@ -18,6 +18,7 @@ add_executable(bitcoin2max_tests
     test_transaction.cpp
     test_wallet.cpp
     test_handshake.cpp
+    test_status_api.cpp
 )
 
 target_include_directories(bitcoin2max_tests
@@ -37,6 +38,9 @@ target_link_libraries(bitcoin2max_tests
 # Pull in the implementation objects we want to test
 target_sources(bitcoin2max_tests
     PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/api/status_api.cpp
+        ${CMAKE_SOURCE_DIR}/src/node/node.cpp
+        ${CMAKE_SOURCE_DIR}/src/electrum/electrum_client.cpp
         ${CMAKE_SOURCE_DIR}/src/config/config.cpp
         ${CMAKE_SOURCE_DIR}/src/crypto/elliptic_curve.cpp
         ${CMAKE_SOURCE_DIR}/src/crypto/signature.cpp
