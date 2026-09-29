@@ -7,6 +7,7 @@
 #include "config/config.h"
 #include "node/node.h"
 #include "api/status_api.h"
+#include "api/blocks_api.h"
 #include "api/http_server.h"
 #include <csignal>
 #include <cstdlib>
@@ -53,7 +54,13 @@ int main(int argc, char* argv[]) {
     g_node = &node;
     
     bitcoin2max::StatusApi statusApi(node);
-    bitcoin2max::HttpServer httpServer(statusApi, 8080);
+bitcoin2max::BlocksApi blocksApi(node);
+
+bitcoin2max::HttpServer httpServer(
+    statusApi,
+    blocksApi,
+    8080
+);
 
     std::signal(SIGINT,  handleSignal);
     std::signal(SIGTERM, handleSignal);
