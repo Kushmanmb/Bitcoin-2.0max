@@ -1184,3 +1184,72 @@ if (bitcoinTxInput) {
     }
   );
 }
+/* =========================================================
+   LIVE BITCOIN MAINNET RECENT TRANSACTIONS
+========================================================= */
+
+async function loadRecentBitcoinTransactions() {
+  const table = document.getElementById("transactionsTable");
+
+  if (!table) return;
+
+  try {
+    const response = await fetch(
+      `${BTC_API}/mempool/recent`
+    );
+
+    if (!response.ok) {
+      throw new Error("Unable to load recent transactions");
+    }
+
+    const transactions = await response.json();
+
+    table.innerHTML = transactions.slice(0, 10).map(tx => {
+
+      const shortTxid =
+        tx.txid.slice(0, 10) +
+        "..." +
+        tx.txid.slice(-8);
+
+      const valueBTC =
+        (tx.value / 100000000).toFixed(8);
+
+      return `
+        <tr>
+          <td title="${tx.txid}">
+            ${shortTxid}
+          </td>
+
+          <td>UNCONFIRMED</td>
+
+          <td>MEMPOOL</td>
+
+          <td>${valueBTC} BTC</td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (error) {
+    console.error(
+      "Recent Bitcoin transactions error:",
+      error
+    );
+
+    table.innerHTML = `
+      <tr>
+        <td colspan="4">
+          Unable to load recent Bitcoin Mainnet transactions.
+        </td>
+      </tr>
+    `;
+  }
+}
+
+/* Load recent transactions immediately */
+loadRecentBitcoinTransactions();
+
+/* Refresh recent transactions every 30 seconds */
+setInterval(
+  loadRecentBitcoinTransactions,
+  30000
+);
