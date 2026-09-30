@@ -975,6 +975,11 @@ tbody tr:hover td {
     );
 }
 
+.lookup-panel {
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
+
 
 /* =========================================================
    NODE PANEL
