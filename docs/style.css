@@ -2563,6 +2563,10 @@ pre {
   text-align: right;
 }
 
+/* Base price value styling for the fixed banner (#btcPriceBanner).
+   A later "theme layer" block in this file
+   (search "text-shadow accent") adds a non-conflicting text-shadow
+   on top of these properties — see that block before editing either. */
 #btcPriceValue {
   color: var(--orange-bright);
   font-family: var(--mono);
