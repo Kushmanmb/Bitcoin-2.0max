@@ -1104,9 +1104,13 @@ async function searchBitcoinTransaction() {
   renderStatus("Searching Bitcoin Mainnet…");
   result.setAttribute("aria-busy", "true");
 
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const BTC_LOOKUP_TIMEOUT_MS = 15000;
+  const timeout = setTimeout(
+    () => controller.abort(),
+    BTC_LOOKUP_TIMEOUT_MS
+  );
 
-  function btc(sats) {
+  function formatSatsAsBtc(sats) {
     const n = BigInt(sats);
     const sign = n < 0n ? "-" : "";
     const amount = n < 0n ? -n : n;
@@ -1154,7 +1158,7 @@ async function searchBitcoinTransaction() {
         ["Status", data.status?.confirmed ? "Confirmed" : "Unconfirmed"],
         ["Block height", data.status?.block_height ?? "Pending"],
         ["Fee", (data.fee ?? 0).toLocaleString() + " sats"],
-        ["Total outputs", btc(total)],
+        ["Total outputs", formatSatsAsBtc(total)],
         [
           "Inputs / outputs",
           (data.vin || []).length + " / " + (data.vout || []).length
@@ -1168,14 +1172,14 @@ async function searchBitcoinTransaction() {
         ["Address", value],
         [
           "Confirmed balance",
-          btc(
+          formatSatsAsBtc(
             BigInt(chain.funded_txo_sum) -
             BigInt(chain.spent_txo_sum)
           )
         ],
         [
           "Pending balance change",
-          btc(
+          formatSatsAsBtc(
             BigInt(pending.funded_txo_sum) -
             BigInt(pending.spent_txo_sum)
           )
