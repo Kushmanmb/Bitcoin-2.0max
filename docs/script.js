@@ -1307,3 +1307,19 @@ if (liveBlocksTable) {
     );
   });
 }
+/* =========================================================
+   SEASONAL THEME — HALLOWEEN
+   Automatically active during October
+========================================================= */
+
+function applySeasonalTheme() {
+  const now = new Date();
+  const isOctober = now.getMonth() === 9;
+
+  document.documentElement.classList.toggle(
+    "halloween-theme",
+    isOctober
+  );
+}
+
+applySeasonalTheme();
