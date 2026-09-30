@@ -1502,3 +1502,21 @@ pre code {
   margin: 12px auto 0;
   object-fit: contain;
 }
+/* Bitcoin 2.0Max 3D Background */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-image:
+    linear-gradient(
+      rgba(0, 0, 0, 0.30),
+      rgba(0, 0, 0, 0.50)
+    ),
+    url("./bitcoin2max-background.png");
+
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
