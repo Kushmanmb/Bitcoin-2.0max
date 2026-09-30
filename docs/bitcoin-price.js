@@ -86,9 +86,12 @@
     if (!document.hidden) refreshPrice();
   });
 
+  let lastBannerHeight = null;
+
   function syncBannerHeight() {
     const height = banner.offsetHeight;
-    if (height > 0) {
+    if (height > 0 && height !== lastBannerHeight) {
+      lastBannerHeight = height;
       document.documentElement.style.setProperty(
         "--banner-height",
         height + "px"
