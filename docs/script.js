@@ -1080,6 +1080,73 @@ async function loadBitcoinData() {
 
 /* Load immediately */
 loadBitcoinData();
+loadBitcoinBlocks();
+async function loadBitcoinBlocks() {
+  const table = document.getElementById("blocksTable");
+
+  if (!table) return;
+
+  try {
+    const response = await fetch(`${BTC_API}/blocks`);
+
+    if (!response.ok) {
+      throw new Error("Unable to load Bitcoin blocks");
+    }
+
+    const blocks = await response.json();
+
+    table.innerHTML = blocks.slice(0, 10).map(block => {
+
+      const time = new Date(
+        block.timestamp * 1000
+      ).toLocaleString();
+
+      const hash =
+        block.id.slice(0, 12) +
+        "..." +
+        block.id.slice(-8);
+
+      const size =
+        (block.size / 1000000).toFixed(2) + " MB";
+
+      return `
+        <tr>
+          <td>${block.height.toLocaleString()}</td>
+
+          <td title="${block.id}">
+            ${hash}
+          </td>
+
+          <td>
+            ${block.tx_count.toLocaleString()}
+          </td>
+
+          <td>${time}</td>
+
+          <td>${size}</td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (error) {
+
+    console.error(
+      "Bitcoin blocks error:",
+      error
+    );
+
+    table.innerHTML = `
+      <tr>
+        <td colspan="5">
+          Unable to load Bitcoin Mainnet blocks.
+        </td>
+      </tr>
+    `;
+  }
+}
 
 /* Refresh once per minute */
-setInterval(loadBitcoinData, 60000);
+setInterval(() => {
+  loadBitcoinData();
+  loadBitcoinBlocks();
+}, 60000);
