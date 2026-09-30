@@ -1055,108 +1055,202 @@ setInterval(() => {
 }, 60000);
 
 /* =========================================================
-   LIVE BITCOIN TRANSACTION SEARCH
+   LIVE BITCOIN ADDRESS & TRANSACTION SEARCH
 ========================================================= */
+
+let bitcoinLookupController = null;
 
 async function searchBitcoinTransaction() {
   const input = document.getElementById("txSearch");
   const result = document.getElementById("txResult");
-
   if (!input || !result) return;
 
-  const txid = input.value.trim();
+  bitcoinLookupController?.abort();
+  const controller = new AbortController();
+  bitcoinLookupController = controller;
 
-  if (!/^[a-fA-F0-9]{64}$/.test(txid)) {
-    result.innerHTML = `
-      <div class="empty-state">
-        <span>₿</span>
-        <strong>Invalid Bitcoin TXID</strong>
-        <small>Enter a 64-character Bitcoin transaction ID.</small>
-      </div>
-    `;
+  const query = input.value.trim();
+  const isTx = /^[a-fA-F0-9]{64}$/.test(query);
+  const isLegacy = /^[13][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(query);
+  /* BIP173 requires bech32 addresses to be entirely lowercase or
+     entirely uppercase, so mixed-case input must be rejected. */
+  const uniformCase =
+    query === query.toLowerCase() ||
+    query === query.toUpperCase();
+  const isBech32 =
+    uniformCase && /^bc1[ac-hj-np-z02-9]{11,87}$/i.test(query);
+
+  result.setAttribute("role", "status");
+  result.setAttribute("aria-live", "polite");
+  result.setAttribute("aria-busy", "false");
+
+  function renderStatus(text) {
+    const box = document.createElement("div");
+    box.className = "empty-state";
+    box.textContent = text;
+    result.replaceChildren(box);
+  }
+
+  if (!isTx && !isLegacy && !isBech32) {
+    renderStatus(
+      "Enter a Bitcoin Mainnet address or a 64-character transaction ID."
+    );
     return;
   }
 
-  result.innerHTML = `
-    <div class="empty-state">
-      <span>₿</span>
-      <strong>Searching Bitcoin Mainnet...</strong>
-    </div>
-  `;
+  /* Legacy Base58Check addresses are case-sensitive, so only
+     tx IDs and bech32 addresses (which are case-insensitive
+     per BIP173) are normalized to lowercase here. */
+  const value = isTx || isBech32 ? query.toLowerCase() : query;
+  const kind = isTx ? "tx" : "address";
+
+  renderStatus("Searching Bitcoin Mainnet…");
+  result.setAttribute("aria-busy", "true");
+
+  const BTC_LOOKUP_TIMEOUT_MS = 15000;
+  const timeout = setTimeout(
+    () => controller.abort(),
+    BTC_LOOKUP_TIMEOUT_MS
+  );
+
+  function formatSatsAsBtc(sats) {
+    const n = BigInt(sats);
+    const sign = n < 0n ? "-" : "";
+    const amount = n < 0n ? -n : n;
+
+    return sign + (amount / 100000000n) + "." +
+      String(amount % 100000000n).padStart(8, "0") + " BTC";
+  }
 
   try {
     const response = await fetch(
-      `${BTC_API}/tx/${encodeURIComponent(txid)}`
+      BTC_API + "/" + kind + "/" + encodeURIComponent(value),
+      { signal: controller.signal }
     );
 
+    if (response.status === 400) {
+      throw new Error("Invalid address or transaction ID.");
+    }
+    if (response.status === 404) {
+      throw new Error("No matching record on Bitcoin Mainnet.");
+    }
+    if (response.status === 429) {
+      throw new Error("Too many requests. Please try again shortly.");
+    }
     if (!response.ok) {
-      throw new Error("Transaction not found");
+      throw new Error("Lookup provider unavailable. Please try again.");
     }
 
-    const tx = await response.json();
+    const data = await response.json();
 
-    const confirmed = tx.status?.confirmed === true;
+    if (
+      controller.signal.aborted ||
+      bitcoinLookupController !== controller
+    ) return;
 
-    const totalOutput = (tx.vout || []).reduce(
-      (sum, output) => sum + (output.value || 0),
-      0
-    );
+    let fields;
 
-    const btc = totalOutput / 100000000;
+    if (isTx) {
+      const total = (data.vout || []).reduce(
+        (sum, output) => sum + BigInt(output.value),
+        0n
+      );
 
-    result.innerHTML = `
-      <div style="padding:24px;overflow-wrap:anywhere">
+      fields = [
+        ["Transaction ID", value],
+        ["Status", data.status?.confirmed ? "Confirmed" : "Unconfirmed"],
+        ["Block height", data.status?.block_height ?? "Pending"],
+        ["Fee", (data.fee ?? 0).toLocaleString() + " sats"],
+        ["Total outputs", formatSatsAsBtc(total)],
+        [
+          "Inputs / outputs",
+          (data.vin || []).length + " / " + (data.vout || []).length
+        ]
+      ];
+    } else {
+      const chain = data.chain_stats;
+      const pending = data.mempool_stats;
 
-        <div class="section__eyebrow">
-          BITCOIN MAINNET TRANSACTION
-        </div>
+      const statsValid = stats =>
+        stats &&
+        typeof stats.tx_count === "number" &&
+        typeof stats.funded_txo_sum === "number" &&
+        typeof stats.spent_txo_sum === "number";
 
-        <p>
-          <strong>TXID</strong><br>
-          ${tx.txid}
-        </p>
+      if (!statsValid(chain) || !statsValid(pending)) {
+        throw new Error("Unexpected response from lookup provider.");
+      }
 
-        <p>
-          <strong>Status</strong><br>
-          ${confirmed ? "CONFIRMED" : "UNCONFIRMED"}
-        </p>
+      fields = [
+        ["Address", value],
+        [
+          "Confirmed balance",
+          formatSatsAsBtc(
+            BigInt(chain.funded_txo_sum) -
+            BigInt(chain.spent_txo_sum)
+          )
+        ],
+        [
+          "Pending balance change",
+          formatSatsAsBtc(
+            BigInt(pending.funded_txo_sum) -
+            BigInt(pending.spent_txo_sum)
+          )
+        ],
+        ["Confirmed transactions", chain.tx_count.toLocaleString()],
+        ["Pending transactions", pending.tx_count.toLocaleString()]
+      ];
+    }
 
-        <p>
-          <strong>Block Height</strong><br>
-          ${tx.status?.block_height ?? "Pending"}
-        </p>
+    const panel = document.createElement("div");
+    panel.className = "lookup-panel";
 
-        <p>
-          <strong>Fee</strong><br>
-          ${(tx.fee ?? 0).toLocaleString()} sats
-        </p>
+    const title = document.createElement("div");
+    title.className = "section__eyebrow";
+    title.textContent =
+      "BITCOIN MAINNET · " + (isTx ? "TRANSACTION" : "ADDRESS");
+    panel.append(title);
 
-        <p>
-          <strong>Total Outputs</strong><br>
-          ${btc.toFixed(8)} BTC
-        </p>
+    for (const [label, content] of fields) {
+      const row = document.createElement("p");
+      const heading = document.createElement("strong");
+      heading.textContent = label;
 
-        <p>
-          <strong>Inputs / Outputs</strong><br>
-          ${(tx.vin || []).length} / ${(tx.vout || []).length}
-        </p>
+      row.append(
+        heading,
+        document.createElement("br"),
+        String(content)
+      );
+      panel.append(row);
+    }
 
-      </div>
-    `;
+    const link = document.createElement("a");
+    link.className = "btn btn--ghost btn--lg";
+    link.href =
+      "https://mempool.space/" + kind + "/" +
+      encodeURIComponent(value);
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "View full history on mempool.space ↗";
+    panel.append(link);
 
+    result.replaceChildren(panel);
   } catch (error) {
+    if (bitcoinLookupController !== controller) return;
 
-    console.error("Bitcoin transaction error:", error);
+    renderStatus(
+      error.name === "AbortError"
+        ? "Lookup timed out. Please try again."
+        : error instanceof TypeError
+          ? "Unable to reach the lookup provider. Please try again."
+          : error.message
+    );
+  } finally {
+    clearTimeout(timeout);
 
-    result.innerHTML = `
-      <div class="empty-state">
-        <span>₿</span>
-        <strong>Transaction not found</strong>
-        <small>
-          Check the TXID and try again.
-        </small>
-      </div>
-    `;
+    if (bitcoinLookupController === controller) {
+      result.setAttribute("aria-busy", "false");
+    }
   }
 }
 
