@@ -31,3 +31,90 @@ const CATCHFUNDS = {
     ]
   }
 };
+/* =========================================================
+   CATCHFUNDS DASHBOARD
+========================================================= */
+
+function renderCatchFunds() {
+  const dashboard =
+    document.getElementById("catchfundsDashboard");
+
+  if (!dashboard) return;
+
+  const wallets = [
+    {
+      name: "Bitcoin",
+      symbol: CATCHFUNDS.bitcoin.symbol,
+      network: "Bitcoin Mainnet",
+      address: CATCHFUNDS.bitcoin.address
+    },
+    {
+      name: "Bitcoin Cash",
+      symbol: CATCHFUNDS.bitcoinCash.symbol,
+      network: "Bitcoin Cash",
+      address: CATCHFUNDS.bitcoinCash.address
+    },
+    {
+      name: "Stellar",
+      symbol: CATCHFUNDS.stellar.symbol,
+      network: "Stellar",
+      address: CATCHFUNDS.stellar.address
+    },
+    {
+      name: "EVM CatchFunds",
+      symbol: "EVM",
+      network: CATCHFUNDS.evm.networks.join(" • "),
+      address: CATCHFUNDS.evm.address
+    }
+  ];
+
+  dashboard.innerHTML = wallets.map(wallet => `
+    <article class="catchfunds-card">
+
+      <div class="catchfunds-card__header">
+        <strong>${wallet.name}</strong>
+        <span>${wallet.symbol}</span>
+      </div>
+
+      <small>${wallet.network}</small>
+
+      <code class="catchfunds-address">
+        ${wallet.address}
+      </code>
+
+      <button
+        class="btn btn--ghost catchfunds-copy"
+        type="button"
+        data-address="${wallet.address}"
+      >
+        Copy Address
+      </button>
+
+    </article>
+  `).join("");
+}
+
+document.addEventListener("click", async event => {
+  const button =
+    event.target.closest(".catchfunds-copy");
+
+  if (!button) return;
+
+  const address = button.dataset.address;
+
+  try {
+    await navigator.clipboard.writeText(address);
+
+    const original = button.textContent;
+    button.textContent = "Copied ✓";
+
+    setTimeout(() => {
+      button.textContent = original;
+    }, 1500);
+
+  } catch (error) {
+    console.error("Unable to copy address:", error);
+  }
+});
+
+renderCatchFunds();
