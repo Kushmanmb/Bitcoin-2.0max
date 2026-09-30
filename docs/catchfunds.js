@@ -42,38 +42,44 @@ function renderCatchFunds() {
   if (!dashboard) return;
 
   const wallets = [
-    {
-      name: "Bitcoin",
-      symbol: CATCHFUNDS.bitcoin.symbol,
-      network: "Bitcoin Mainnet",
-      address: CATCHFUNDS.bitcoin.address
-    },
-    {
-      name: "Bitcoin Cash",
-      symbol: CATCHFUNDS.bitcoinCash.symbol,
-      network: "Bitcoin Cash",
-      address: CATCHFUNDS.bitcoinCash.address
-    },
-    {
-      name: "Stellar",
-      symbol: CATCHFUNDS.stellar.symbol,
-      network: "Stellar",
-      address: CATCHFUNDS.stellar.address
-    },
-    {
-      name: "EVM CatchFunds",
-      symbol: "EVM",
-      network: CATCHFUNDS.evm.networks.join(" • "),
-      address: CATCHFUNDS.evm.address
-    }
-  ];
+  {
+    name: "Bitcoin",
+    badge: "btc",
+    symbol: CATCHFUNDS.bitcoin.symbol,
+    network: "Bitcoin Mainnet",
+    address: CATCHFUNDS.bitcoin.address
+  },
+  {
+    name: "Bitcoin Cash",
+    badge: "bch",
+    symbol: CATCHFUNDS.bitcoinCash.symbol,
+    network: "Bitcoin Cash",
+    address: CATCHFUNDS.bitcoinCash.address
+  },
+  {
+    name: "Stellar",
+    badge: "xlm",
+    symbol: CATCHFUNDS.stellar.symbol,
+    network: "Stellar",
+    address: CATCHFUNDS.stellar.address
+  },
+  {
+    name: "EVM CatchFunds",
+    badge: "evm",
+    symbol: "EVM",
+    network: CATCHFUNDS.evm.networks.join(" • "),
+    address: CATCHFUNDS.evm.address
+  }
+];
 
   dashboard.innerHTML = wallets.map(wallet => `
-    <article class="catchfunds-card">
+    <article class="catchfunds-card catchfunds-card--${wallet.badge}">
 
       <div class="catchfunds-card__header">
         <strong>${wallet.name}</strong>
-        <span>${wallet.symbol}</span>
+        <span class="network-badge network-badge--${wallet.badge}">
+  ${wallet.symbol}
+</span>
       </div>
 
       <small>${wallet.network}</small>
