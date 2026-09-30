@@ -1,9 +1,13 @@
 #include "blocks_api.h"
 
+#include "crypto/block_hash.h"
 #include "node/node.h"
 
 #include <algorithm>
+#include <cctype>
+#include <cstdint>
 #include <sstream>
+#include <vector>
 
 namespace bitcoin2max {
 
@@ -30,7 +34,38 @@ std::string BlocksApi::getBlocksJson(std::size_t limit) const {
             const std::string headerHex =
                 node_.getBlockHeaderHex(height);
 
-            if (headerHex.empty()) {
+            if (headerHex.empty() || headerHex.size() != 160) {
+                continue;
+            }
+
+            std::vector<uint8_t> header;
+            header.reserve(80);
+
+            try {
+                for (std::size_t pos = 0; pos < headerHex.size(); pos += 2) {
+                    if (!std::isxdigit(
+                            static_cast<unsigned char>(headerHex[pos])) ||
+                        !std::isxdigit(
+                            static_cast<unsigned char>(headerHex[pos + 1]))) {
+                        header.clear();
+                        break;
+                    }
+
+                    header.push_back(static_cast<uint8_t>(
+                        std::stoul(headerHex.substr(pos, 2), nullptr, 16)
+                    ));
+                }
+            } catch (...) {
+                continue;
+            }
+
+            if (header.size() != 80) {
+                continue;
+            }
+
+            const std::string hash = crypto::blockHashHex(header);
+
+            if (hash.empty()) {
                 continue;
             }
 
@@ -40,6 +75,7 @@ std::string BlocksApi::getBlocksJson(std::size_t limit) const {
 
             json << "{"
                  << "\"height\":" << height << ","
+                 << "\"hash\":\"" << hash << "\","
                  << "\"headerHex\":\"" << headerHex << "\""
                  << "}";
 
