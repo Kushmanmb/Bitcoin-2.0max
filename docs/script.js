@@ -1145,6 +1145,12 @@ async function loadBitcoinBlocks() {
   }
 }
 
+}
+
+/* Load immediately */
+loadBitcoinData();
+loadBitcoinBlocks();
+
 /* Refresh once per minute */
 setInterval(() => {
   loadBitcoinData();
