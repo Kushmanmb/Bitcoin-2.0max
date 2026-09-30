@@ -1646,3 +1646,118 @@ body {
 .catchfunds-card--evm {
   border-color: rgba(180, 76, 255, 0.55);
 }
+/* =========================================================
+   BITCOIN 2.0MAX — HALLOWEEN THEME
+   Activated automatically during October
+========================================================= */
+
+.halloween-theme {
+  --halloween-orange: #ff7a00;
+  --halloween-purple: #9b4dff;
+  --halloween-green: #7cff00;
+  --halloween-black: #050207;
+}
+
+/* Spooky October background */
+.halloween-theme body {
+  background:
+    radial-gradient(
+      circle at 15% 20%,
+      rgba(155, 77, 255, 0.20),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 85% 25%,
+      rgba(255, 122, 0, 0.22),
+      transparent 35%
+    ),
+    linear-gradient(
+      rgba(5, 2, 7, 0.72),
+      rgba(5, 2, 7, 0.90)
+    ),
+    url("./bitcoin2max-background-v2.png.PNG");
+
+  background-position: center top;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* Halloween glow on headings */
+.halloween-theme h1,
+.halloween-theme h2 {
+  text-shadow:
+    0 0 12px rgba(255, 122, 0, 0.45),
+    0 0 28px rgba(155, 77, 255, 0.25);
+}
+
+/* Pumpkin-orange section labels */
+.halloween-theme .section__eyebrow {
+  color: var(--halloween-orange);
+}
+
+/* Haunted cards */
+.halloween-theme .card,
+.halloween-theme .catchfunds-card {
+  background:
+    linear-gradient(
+      145deg,
+      rgba(12, 5, 16, 0.94),
+      rgba(5, 5, 5, 0.92)
+    );
+
+  box-shadow:
+    0 0 22px rgba(155, 77, 255, 0.10),
+    inset 0 0 18px rgba(255, 122, 0, 0.025);
+}
+
+/* Halloween buttons */
+.halloween-theme .btn {
+  border-color: rgba(255, 122, 0, 0.65);
+}
+
+.halloween-theme .btn:hover {
+  border-color: var(--halloween-orange);
+
+  box-shadow:
+    0 0 12px rgba(255, 122, 0, 0.45),
+    0 0 24px rgba(155, 77, 255, 0.20);
+}
+
+/* Halloween CatchFunds address fields */
+.halloween-theme .catchfunds-address {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* Purple/orange glow around CatchFunds */
+.halloween-theme #catchfunds {
+  position: relative;
+}
+
+.halloween-theme #catchfunds::before {
+  content: "🎃  OCTOBER • HALLOWEEN MODE  🎃";
+  display: block;
+  width: fit-content;
+  margin: 0 auto 28px;
+  padding: 8px 16px;
+
+  border: 1px solid rgba(255, 122, 0, 0.55);
+  border-radius: 999px;
+
+  color: var(--halloween-orange);
+  background: rgba(5, 2, 7, 0.88);
+
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+
+  box-shadow:
+    0 0 16px rgba(255, 122, 0, 0.22),
+    0 0 28px rgba(155, 77, 255, 0.12);
+}
+
+/* Halloween selection color */
+.halloween-theme ::selection {
+  background: var(--halloween-orange);
+  color: #000;
+}
