@@ -979,3 +979,107 @@
   }
 
 })();
+/* =========================================================
+   LIVE BITCOIN MAINNET DATA
+========================================================= */
+
+const BTC_API = "https://mempool.space/api";
+
+async function loadBitcoinData() {
+  try {
+    const [
+      heightResponse,
+      mempoolResponse,
+      feesResponse,
+      priceResponse
+    ] = await Promise.all([
+      fetch(`${BTC_API}/blocks/tip/height`),
+      fetch(`${BTC_API}/mempool`),
+      fetch(`${BTC_API}/v1/fees/recommended`),
+      fetch(`${BTC_API}/v1/prices`)
+    ]);
+
+    if (
+      !heightResponse.ok ||
+      !mempoolResponse.ok ||
+      !feesResponse.ok ||
+      !priceResponse.ok
+    ) {
+      throw new Error("Bitcoin API request failed");
+    }
+
+    const height = await heightResponse.text();
+    const mempool = await mempoolResponse.json();
+    const fees = await feesResponse.json();
+    const prices = await priceResponse.json();
+
+    // Existing dashboard elements
+    const heroHeight = document.getElementById("heroBlockHeight");
+    const blockHeight = document.getElementById("blockHeight");
+    const heroMempool = document.getElementById("heroMempool");
+    const mempoolCount = document.getElementById("mempoolCount");
+    const nodeStatus = document.getElementById("nodeStatus");
+    const nodeStatusDetail =
+      document.getElementById("nodeStatusDetail");
+
+    if (heroHeight) {
+      heroHeight.textContent =
+        Number(height).toLocaleString();
+    }
+
+    if (blockHeight) {
+      blockHeight.textContent =
+        Number(height).toLocaleString();
+    }
+
+    if (heroMempool) {
+      heroMempool.textContent =
+        Number(mempool.count).toLocaleString();
+    }
+
+    if (mempoolCount) {
+      mempoolCount.textContent =
+        Number(mempool.count).toLocaleString();
+    }
+
+    if (nodeStatus) {
+      nodeStatus.textContent = "LIVE";
+    }
+
+    if (nodeStatusDetail) {
+      nodeStatusDetail.textContent =
+        `Bitcoin Mainnet • ${fees.fastestFee} sat/vB • $${Number(
+          prices.USD
+        ).toLocaleString()} BTC`;
+    }
+
+    console.log("Bitcoin Mainnet data loaded:", {
+      height,
+      mempool: mempool.count,
+      fastestFee: fees.fastestFee,
+      bitcoinPrice: prices.USD
+    });
+
+  } catch (error) {
+    console.error("Bitcoin data error:", error);
+
+    const nodeStatus = document.getElementById("nodeStatus");
+    const nodeStatusDetail =
+      document.getElementById("nodeStatusDetail");
+
+    if (nodeStatus) {
+      nodeStatus.textContent = "DATA OFFLINE";
+    }
+
+    if (nodeStatusDetail) {
+      nodeStatusDetail.textContent =
+        "Unable to reach Bitcoin data provider";
+    }
+  }
+}
+
+/* Load immediately */
+loadBitcoinData();
+
+/* Refresh once per minute */
+setInterval(loadBitcoinData, 60000);
