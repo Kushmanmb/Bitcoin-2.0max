@@ -1072,6 +1072,8 @@ async function searchBitcoinTransaction() {
   const query = input.value.trim();
   const isTx = /^[a-fA-F0-9]{64}$/.test(query);
   const isLegacy = /^[13][1-9A-HJ-NP-Za-km-z]{25,34}$/.test(query);
+  /* BIP173 requires bech32 addresses to be entirely lowercase or
+     entirely uppercase, so mixed-case input must be rejected. */
   const uniformCase =
     query === query.toLowerCase() ||
     query === query.toUpperCase();
@@ -1082,7 +1084,7 @@ async function searchBitcoinTransaction() {
   result.setAttribute("aria-live", "polite");
   result.setAttribute("aria-busy", "false");
 
-  function message(text) {
+  function renderStatus(text) {
     const box = document.createElement("div");
     box.className = "empty-state";
     box.textContent = text;
@@ -1090,7 +1092,7 @@ async function searchBitcoinTransaction() {
   }
 
   if (!isTx && !isLegacy && !isBech32) {
-    message(
+    renderStatus(
       "Enter a Bitcoin Mainnet address or a 64-character transaction ID."
     );
     return;
@@ -1099,7 +1101,7 @@ async function searchBitcoinTransaction() {
   const value = isTx || isBech32 ? query.toLowerCase() : query;
   const kind = isTx ? "tx" : "address";
 
-  message("Searching Bitcoin Mainnet…");
+  renderStatus("Searching Bitcoin Mainnet…");
   result.setAttribute("aria-busy", "true");
 
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -1219,7 +1221,7 @@ async function searchBitcoinTransaction() {
   } catch (error) {
     if (bitcoinLookupController !== controller) return;
 
-    message(
+    renderStatus(
       error.name === "AbortError"
         ? "Lookup timed out. Please try again."
         : error instanceof TypeError
