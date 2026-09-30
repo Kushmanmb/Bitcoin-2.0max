@@ -506,7 +506,7 @@
 
 
           return `
-            <tr>
+            <tr data-block-hash="${block.hash}" style="cursor:pointer">
 
               <td>
                 ${height}
@@ -1009,7 +1009,7 @@ async function loadBitcoinBlocks() {
         (block.size / 1000000).toFixed(2) + " MB";
 
       return `
-        <tr>
+        <tr data-block-hash="${block.id}" style="cursor:pointer">
           <td>${block.height.toLocaleString()}</td>
 
           <td title="${block.id}">
@@ -1284,3 +1284,26 @@ setInterval(
   loadRecentBitcoinTransactions,
   30000
 );
+/* =========================================================
+   CLICK LIVE BITCOIN BLOCK TO INSPECT
+========================================================= */
+
+const liveBlocksTable =
+  document.getElementById("blocksTable");
+
+if (liveBlocksTable) {
+  liveBlocksTable.addEventListener("click", event => {
+
+    const row = event.target.closest("tr");
+
+    if (!row || !row.dataset.blockHash) return;
+
+    const blockHash = row.dataset.blockHash;
+
+    window.open(
+      `https://mempool.space/block/${blockHash}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  });
+}
