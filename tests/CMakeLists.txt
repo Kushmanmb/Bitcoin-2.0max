@@ -11,6 +11,7 @@ FetchContent_MakeAvailable(Catch2)
 
 # ── Test sources ─────────────────────────────────────────────────────────────
 add_executable(bitcoin2max_tests
+    test_block_hash.cpp
     test_blocks_api.cpp
     test_http_server.cpp
     test_config.cpp
