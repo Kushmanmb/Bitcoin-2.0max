@@ -104,7 +104,18 @@ inline std::string blockHashHex(const BlockHeader& header) {
 
 /// Return the block header hash as lowercase hexadecimal for a raw serialized header.
 inline std::string blockHashHex(const std::vector<uint8_t>& rawHeader) {
-    return toHex(sha256d(rawHeader));
+    // A serialized Bitcoin block header must be exactly 80 bytes.
+    if (rawHeader.size() != 80) {
+        return {};
+    }
+
+    auto hash = sha256d(rawHeader);
+
+    // Bitcoin block hashes are displayed in reverse byte order
+    // relative to the raw SHA256d digest.
+    std::reverse(hash.begin(), hash.end());
+
+    return toHex(hash);
 }
 
 } // namespace crypto
