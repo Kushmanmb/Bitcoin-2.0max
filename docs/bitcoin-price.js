@@ -109,13 +109,17 @@
 
   syncBannerHeight();
 
+  // ResizeObserver covers reflow-driven height changes (e.g. text
+  // wrapping on narrower viewports). The resize listener is kept as
+  // a fallback/belt-and-braces for browsers without ResizeObserver
+  // and for edge cases where the viewport changes without altering
+  // the observed element's box size.
   if (typeof ResizeObserver === "function") {
     const observer = new ResizeObserver(scheduleSyncBannerHeight);
     observer.observe(banner);
-  } else {
-    window.addEventListener("resize", scheduleSyncBannerHeight);
   }
 
+  window.addEventListener("resize", scheduleSyncBannerHeight);
   window.addEventListener(
     "orientationchange",
     scheduleSyncBannerHeight

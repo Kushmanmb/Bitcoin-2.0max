@@ -2800,9 +2800,20 @@ pre {
 
 /* Price display */
 .btc-banner {
+  background:
+    linear-gradient(
+      110deg,
+      rgba(255, 155, 69, .18),
+      rgba(255, 155, 69, .03)
+    ),
+    rgba(9, 11, 15, 0.96);
   box-shadow: 0 16px 40px rgba(0, 0, 0, .3);
 }
 
+/* Adds a text-shadow accent on top of the base #btcPriceValue
+   rule above; declared separately (not merged) to mirror this
+   file's existing "theme layer" convention where later sections
+   append visual polish to earlier rules rather than editing them. */
 #btcPriceValue {
   text-shadow: 0 0 24px rgba(255, 155, 69, .14);
 }
