@@ -2473,6 +2473,63 @@ pre {
   html {
     scroll-behavior: auto;
   }
+}
+
+/* Live Bitcoin price card */
+.btc-price-card {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 30px;
+  border-top: 1px solid var(--border);
+  background:
+    linear-gradient(
+      120deg,
+      rgba(247, 147, 26, 0.12),
+      rgba(247, 147, 26, 0.02)
+    );
+}
+
+.btc-price-card small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.btc-price-card__quote {
+  min-width: 0;
+  text-align: right;
+}
+
+#btcPriceValue {
+  color: var(--orange-bright);
+  font-family: var(--mono);
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  letter-spacing: -0.04em;
+}
+
+.btc-price-card--offline #btcPriceStatus {
+  color: #ffc078;
+}
+
+.hero__stats > .stat:nth-child(4) {
+  border-right: 0;
+}
+
+@media (max-width: 560px) {
+  .btc-price-card {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding: 22px;
+  }
+
+  .btc-price-card__quote {
+    text-align: left;
+  }
 
   *,
   *::before,
