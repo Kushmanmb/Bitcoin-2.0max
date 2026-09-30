@@ -1214,8 +1214,8 @@ async function loadRecentBitcoinTransactions() {
       const valueBTC =
         (tx.value / 100000000).toFixed(8);
 
-      return `
-        <tr>
+        return `
+        <tr data-txid="${tx.txid}" style="cursor:pointer">
           <td title="${tx.txid}">
             ${shortTxid}
           </td>
@@ -1244,7 +1244,38 @@ async function loadRecentBitcoinTransactions() {
     `;
   }
 }
+/* =========================================================
+   CLICK RECENT TRANSACTION TO INSPECT
+========================================================= */
 
+const recentTransactionsTable =
+  document.getElementById("transactionsTable");
+
+if (recentTransactionsTable) {
+  recentTransactionsTable.addEventListener("click", event => {
+
+    const row = event.target.closest("tr");
+
+    if (!row || !row.dataset.txid) return;
+
+    const txid = row.dataset.txid;
+
+    const input = document.getElementById("txSearch");
+
+    if (input) {
+      input.value = txid;
+    }
+
+    searchBitcoinTransaction();
+
+    document
+      .getElementById("transactions")
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+  });
+}
 /* Load recent transactions immediately */
 loadRecentBitcoinTransactions();
 
