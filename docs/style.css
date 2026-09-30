@@ -21,6 +21,11 @@
 
   --max-width: 1180px;
   --nav-height: 70px;
+
+  /* Static fallback only; bitcoin-price.js measures the
+     rendered .btc-banner and overwrites this value so
+     layout offsets stay accurate without JS relying on
+     a guessed height. */
   --banner-height: 64px;
 
   --radius-sm: 8px;

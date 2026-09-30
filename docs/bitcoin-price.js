@@ -96,14 +96,28 @@
     }
   }
 
+  let syncScheduled = false;
+  function scheduleSyncBannerHeight() {
+    if (syncScheduled) return;
+    syncScheduled = true;
+
+    requestAnimationFrame(() => {
+      syncScheduled = false;
+      syncBannerHeight();
+    });
+  }
+
   syncBannerHeight();
 
   if (typeof ResizeObserver === "function") {
-    const observer = new ResizeObserver(syncBannerHeight);
+    const observer = new ResizeObserver(scheduleSyncBannerHeight);
     observer.observe(banner);
   } else {
-    window.addEventListener("resize", syncBannerHeight);
+    window.addEventListener("resize", scheduleSyncBannerHeight);
   }
 
-  window.addEventListener("orientationchange", syncBannerHeight);
+  window.addEventListener(
+    "orientationchange",
+    scheduleSyncBannerHeight
+  );
 })();
