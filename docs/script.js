@@ -980,9 +980,6 @@ async function loadBitcoinData() {
   }
 }
 
-/* Load immediately */
-loadBitcoinData();
-loadBitcoinBlocks();
 async function loadBitcoinBlocks() {
   const table = document.getElementById("blocksTable");
 
