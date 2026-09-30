@@ -1761,3 +1761,127 @@ body {
   background: var(--halloween-orange);
   color: #000;
 }
+/* =========================================================
+   HALLOWEEN FX — FOG + BATS
+========================================================= */
+
+.halloween-theme body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      ellipse at 20% 80%,
+      rgba(180, 180, 200, 0.10),
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 75% 65%,
+      rgba(155, 77, 255, 0.08),
+      transparent 40%
+    );
+
+  filter: blur(18px);
+  animation: halloweenFog 14s ease-in-out infinite alternate;
+}
+
+@keyframes halloweenFog {
+  from {
+    transform: translate3d(-4%, 1%, 0) scale(1.05);
+    opacity: 0.45;
+  }
+
+  to {
+    transform: translate3d(4%, -2%, 0) scale(1.12);
+    opacity: 0.8;
+  }
+}
+
+/* Flying bats */
+.halloween-theme body::after {
+  content: "🦇     🦇        🦇";
+  position: fixed;
+  top: 14%;
+  left: -220px;
+  z-index: 9991;
+
+  pointer-events: none;
+  white-space: nowrap;
+
+  font-size: clamp(18px, 3vw, 30px);
+  letter-spacing: 28px;
+
+  opacity: 0.55;
+
+  filter:
+    drop-shadow(0 0 8px rgba(155, 77, 255, 0.55));
+
+  animation: halloweenBats 18s linear infinite;
+}
+
+@keyframes halloweenBats {
+  0% {
+    transform:
+      translateX(0)
+      translateY(0)
+      rotate(-3deg);
+  }
+
+  25% {
+    transform:
+      translateX(35vw)
+      translateY(-18px)
+      rotate(4deg);
+  }
+
+  50% {
+    transform:
+      translateX(70vw)
+      translateY(12px)
+      rotate(-4deg);
+  }
+
+  75% {
+    transform:
+      translateX(105vw)
+      translateY(-24px)
+      rotate(5deg);
+  }
+
+  100% {
+    transform:
+      translateX(calc(100vw + 440px))
+      translateY(4px)
+      rotate(-2deg);
+  }
+}
+
+/* Keep effects lightweight on phones */
+@media (max-width: 720px) {
+  .halloween-theme body::before {
+    filter: blur(12px);
+    animation-duration: 18s;
+  }
+
+  .halloween-theme body::after {
+    font-size: 18px;
+    letter-spacing: 16px;
+    animation-duration: 22s;
+    opacity: 0.45;
+  }
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .halloween-theme body::before,
+  .halloween-theme body::after {
+    animation: none;
+  }
+
+  .halloween-theme body::after {
+    display: none;
+  }
+}
