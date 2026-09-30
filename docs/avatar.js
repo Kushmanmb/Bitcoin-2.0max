@@ -461,4 +461,265 @@
     ]);
 
     const clamp = (value, min, max) =>
-      Math.max(min, Math.min
+      Math.max(min, Math.min(max, value));
+
+    const size = { width: 72, height: 100 };
+
+    const bounds = () => ({
+      x: Math.max(0, innerWidth - size.width),
+      y: Math.max(0, innerHeight - size.height - 16)
+    });
+
+    const position = { x: 24, y: bounds().y };
+
+    let action = "wave";
+    let paused = reduced.matches;
+    let dragging = false;
+    let pointerId = null;
+    let offset = { x: 0, y: 0 };
+    let clock = 0;
+    let previous = null;
+    let route = null;
+    let nextAction = 2500;
+
+    resident.style.left = "0";
+    resident.style.top = "0";
+
+    function draw() {
+      const limit = bounds();
+
+      position.x = clamp(position.x, 0, limit.x);
+      position.y = clamp(position.y, 0, limit.y);
+
+      resident.style.transform =
+        `translate3d(${position.x}px, ${position.y}px, 0)`;
+    }
+
+    function setAction(name) {
+      action = name;
+      resident.dataset.action = name;
+      bubble.textContent = messages[name] || "";
+      cable.hidden = name !== "zipline";
+    }
+
+    function updatePause() {
+      resident.classList.toggle("paused", paused);
+
+      toggle.textContent = paused
+        ? "Resume Mini K"
+        : "Pause Mini K";
+
+      toggle.setAttribute("aria-pressed", String(paused));
+    }
+
+    function chooseAction() {
+      const choices = Object.keys(messages);
+
+      const name =
+        choices[Math.floor(Math.random() * choices.length)];
+
+      const limit = bounds();
+      const from = { ...position };
+
+      const to = {
+        x: Math.random() * limit.x,
+        y: limit.y
+      };
+
+      const duration = name === "parachute" ? 6500 : 4000;
+
+      if (name === "zipline") {
+        to.y = Math.max(0, limit.y * 0.55);
+
+        cableLine.setAttribute("x1", from.x + 36);
+        cableLine.setAttribute("y1", from.y - 10);
+        cableLine.setAttribute("x2", to.x + 36);
+        cableLine.setAttribute("y2", to.y - 10);
+      }
+
+      if (name === "parachute") {
+        position.y = Math.min(150, limit.y);
+        from.y = position.y;
+      }
+
+      // Stand on the transaction search box sometimes.
+      const box = document.querySelector(".tx-search");
+
+      const boxActions = [
+        "lean",
+        "work",
+        "workout",
+        "pushups",
+        "handstand"
+      ];
+
+      if (box && boxActions.includes(name)) {
+        const rect = box.getBoundingClientRect();
+
+        if (rect.top >= 100 && rect.top < innerHeight) {
+          position.x = clamp(
+            rect.left + rect.width / 2 - 36,
+            0,
+            limit.x
+          );
+
+          position.y = clamp(
+            rect.top - size.height,
+            0,
+            limit.y
+          );
+        }
+      }
+
+      setAction(name);
+
+      route = movingActions.has(name)
+        ? { from, to, start: clock, duration }
+        : null;
+
+      nextAction = clock + duration + 1500;
+    }
+
+    resident.addEventListener("pointerdown", event => {
+      if (event.button !== 0) return;
+
+      event.preventDefault();
+      resident.setPointerCapture(event.pointerId);
+
+      pointerId = event.pointerId;
+      dragging = true;
+      route = null;
+
+      offset = {
+        x: event.clientX - position.x,
+        y: event.clientY - position.y
+      };
+
+      setAction("wave");
+      resident.classList.add("dragging");
+    });
+
+    resident.addEventListener("pointermove", event => {
+      if (!dragging || event.pointerId !== pointerId) return;
+
+      position.x = event.clientX - offset.x;
+      position.y = event.clientY - offset.y;
+
+      draw();
+    });
+
+    function stopDragging(event) {
+      if (!dragging || event.pointerId !== pointerId) return;
+
+      dragging = false;
+      pointerId = null;
+
+      resident.classList.remove("dragging");
+      nextAction = clock + 5000;
+
+      draw();
+    }
+
+    resident.addEventListener("pointerup", stopDragging);
+    resident.addEventListener("pointercancel", stopDragging);
+    resident.addEventListener("lostpointercapture", stopDragging);
+
+    resident.addEventListener("keydown", event => {
+      const moves = {
+        ArrowLeft: [-20, 0],
+        ArrowRight: [20, 0],
+        ArrowUp: [0, -20],
+        ArrowDown: [0, 20]
+      };
+
+      const move = moves[event.key];
+      if (!move) return;
+
+      event.preventDefault();
+      route = null;
+
+      position.x += move[0];
+      position.y += move[1];
+
+      setAction("wave");
+      nextAction = clock + 5000;
+
+      draw();
+    });
+
+    toggle.addEventListener("click", () => {
+      paused = !paused;
+      updatePause();
+    });
+
+    reduced.addEventListener("change", event => {
+      paused = event.matches;
+      updatePause();
+    });
+
+    window.addEventListener("resize", () => {
+      route = null;
+      cable.hidden = true;
+      nextAction = clock + 2500;
+
+      draw();
+    });
+
+    function frame(now) {
+      const delta = previous === null
+        ? 0
+        : Math.min(50, now - previous);
+
+      previous = now;
+
+      if (!paused && !dragging && !document.hidden) {
+        clock += delta;
+
+        if (clock >= nextAction) {
+          chooseAction();
+        }
+
+        if (route) {
+          const progress = clamp(
+            (clock - route.start) / route.duration,
+            0,
+            1
+          );
+
+          position.x = route.from.x +
+            (route.to.x - route.from.x) * progress;
+
+          position.y = route.from.y +
+            (route.to.y - route.from.y) * progress;
+
+          if (action === "jump") {
+            position.y -= Math.sin(progress * Math.PI) * 100;
+          }
+
+          if (progress === 1) {
+            route = null;
+            setAction("wave");
+          }
+        }
+
+        draw();
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    setAction("wave");
+    updatePause();
+    draw();
+
+    requestAnimationFrame(frame);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, {
+      once: true
+    });
+  } else {
+    start();
+  }
+})();
