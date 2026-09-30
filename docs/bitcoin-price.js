@@ -1,37 +1,15 @@
 (() => {
   "use strict";
 
-  if (document.getElementById("btcPriceCard")) return;
+  const banner = document.getElementById("btcPriceBanner");
+  if (!banner) return;
 
-  const stats = document.querySelector(".hero__stats");
-  if (!stats) return;
+  if (banner.dataset.priceBound === "true") return;
+  banner.dataset.priceBound = "true";
 
-  const card = document.createElement("article");
-  card.id = "btcPriceCard";
-  card.className = "btc-price-card";
-  card.setAttribute(
-    "aria-label",
-    "Bitcoin Mainnet price in US dollars"
-  );
-
-  card.innerHTML = `
-    <div>
-      <div class="section__eyebrow">₿ BITCOIN / USD</div>
-      <small>Bitcoin Mainnet · mempool.space</small>
-    </div>
-
-    <div class="btc-price-card__quote">
-      <strong id="btcPriceValue">—</strong>
-      <small id="btcPriceStatus" role="status">
-        Loading price…
-      </small>
-    </div>
-  `;
-
-  stats.append(card);
-
-  const value = card.querySelector("#btcPriceValue");
-  const status = card.querySelector("#btcPriceStatus");
+  const value = banner.querySelector("#btcPriceValue");
+  const status = banner.querySelector("#btcPriceStatus");
+  if (!value || !status) return;
 
   const currency = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -87,9 +65,9 @@
           second: "2-digit"
         });
 
-      card.classList.remove("btc-price-card--offline");
+      banner.classList.remove("btc-banner--offline");
     } catch {
-      card.classList.add("btc-price-card--offline");
+      banner.classList.add("btc-banner--offline");
 
       status.textContent = checkedAt
         ? "Feed offline · Last checked " +
@@ -107,4 +85,25 @@
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) refreshPrice();
   });
+
+  function syncBannerHeight() {
+    const height = banner.offsetHeight;
+    if (height > 0) {
+      document.documentElement.style.setProperty(
+        "--banner-height",
+        height + "px"
+      );
+    }
+  }
+
+  syncBannerHeight();
+
+  if (typeof ResizeObserver === "function") {
+    const observer = new ResizeObserver(syncBannerHeight);
+    observer.observe(banner);
+  } else {
+    window.addEventListener("resize", syncBannerHeight);
+  }
+
+  window.addEventListener("orientationchange", syncBannerHeight);
 })();

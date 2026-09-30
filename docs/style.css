@@ -21,6 +21,7 @@
 
   --max-width: 1180px;
   --nav-height: 70px;
+  --banner-height: 64px;
 
   --radius-sm: 8px;
   --radius-md: 14px;
@@ -119,7 +120,7 @@ pre {
 
 .nav {
   position: fixed;
-  top: 0;
+  top: var(--banner-height);
   left: 0;
   right: 0;
 
@@ -604,7 +605,7 @@ pre {
   padding: 90px 0;
 
   scroll-margin-top:
-    var(--nav-height);
+    calc(var(--banner-height) + var(--nav-height));
 }
 
 .section--alt {
@@ -1989,7 +1990,8 @@ body {
 }
 
 section[id] {
-  scroll-margin-top: calc(var(--nav-height) + 24px);
+  scroll-margin-top:
+    calc(var(--banner-height) + var(--nav-height) + 24px);
 }
 
 /* Navigation */
@@ -2024,7 +2026,9 @@ section[id] {
 
 .hero {
   min-height: auto;
-  padding: calc(var(--nav-height) + 76px) 0 58px;
+  padding:
+    calc(var(--banner-height) + var(--nav-height) + 76px)
+    0 58px;
 }
 
 .hero__content {
@@ -2389,7 +2393,8 @@ pre {
 
 @media (max-width: 760px) {
   .hero {
-    padding-top: calc(var(--nav-height) + 40px);
+    padding-top:
+      calc(var(--banner-height) + var(--nav-height) + 40px);
   }
 
   .hero__content {
@@ -2475,43 +2480,98 @@ pre {
   }
 }
 
-/* Live Bitcoin price card */
-.btc-price-card {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 24px 30px;
-  border-top: 1px solid var(--border);
+/* Live Bitcoin price banner */
+.btc-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1100;
+
+  border-bottom: 1px solid var(--border);
   background:
     linear-gradient(
       120deg,
-      rgba(247, 147, 26, 0.12),
-      rgba(247, 147, 26, 0.02)
-    );
+      rgba(247, 147, 26, 0.14),
+      rgba(9, 11, 15, 0.04)
+    ),
+    rgba(9, 11, 15, 0.96);
+
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
-.btc-price-card small {
-  display: block;
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 0.75rem;
+.btc-banner__inner {
+  width: min(100% - 32px, var(--max-width));
+  margin-inline: auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  padding: 10px 0;
 }
 
-.btc-price-card__quote {
+.btc-banner__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
+  color: var(--text);
+}
+
+.btc-banner__logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.btc-banner__label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.btc-banner__eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btc-banner__provider {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.btc-banner__quote {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-shrink: 0;
   text-align: right;
 }
 
 #btcPriceValue {
   color: var(--orange-bright);
   font-family: var(--mono);
-  font-size: clamp(1.6rem, 4vw, 2.3rem);
-  letter-spacing: -0.04em;
+  font-size: clamp(1.1rem, 2.4vw, 1.5rem);
+  letter-spacing: -0.03em;
 }
 
-.btc-price-card--offline #btcPriceStatus {
+.btc-banner__status {
+  color: var(--muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.btc-banner--offline .btc-banner__status {
   color: #ffc078;
 }
 
@@ -2520,15 +2580,21 @@ pre {
 }
 
 @media (max-width: 560px) {
-  .btc-price-card {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
-    padding: 22px;
+  .btc-banner__inner {
+    gap: 10px;
+    padding: 8px 0;
   }
 
-  .btc-price-card__quote {
-    text-align: left;
+  .btc-banner__provider {
+    display: none;
+  }
+
+  .btc-banner__quote {
+    gap: 8px;
+  }
+
+  .btc-banner__status {
+    font-size: 0.66rem;
   }
 
   *,
@@ -2549,7 +2615,7 @@ pre {
 
 /* Floating navigation */
 .nav {
-  top: 12px;
+  top: calc(var(--banner-height) + 12px);
   left: max(16px, calc((100vw - var(--max-width)) / 2));
   right: max(16px, calc((100vw - var(--max-width)) / 2));
   border: 1px solid rgba(255, 255, 255, .13);
@@ -2570,7 +2636,8 @@ pre {
 
 /* Hero lighting */
 .hero {
-  padding-top: calc(var(--nav-height) + 96px);
+  padding-top:
+    calc(var(--banner-height) + var(--nav-height) + 96px);
 }
 
 .hero__logo {
@@ -2727,12 +2794,8 @@ pre {
 }
 
 /* Price display */
-.btc-price-card {
-  background: linear-gradient(
-    110deg,
-    rgba(255, 155, 69, .14),
-    rgba(255, 155, 69, .025)
-  );
+.btc-banner {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .3);
 }
 
 #btcPriceValue {
@@ -2783,7 +2846,7 @@ pre {
 
 @media (max-width: 760px) {
   .nav {
-    top: 0;
+    top: var(--banner-height);
     left: 0;
     right: 0;
     border-radius: 0;
@@ -2794,7 +2857,8 @@ pre {
   }
 
   .hero {
-    padding-top: calc(var(--nav-height) + 40px);
+    padding-top:
+      calc(var(--banner-height) + var(--nav-height) + 40px);
   }
 }
 
