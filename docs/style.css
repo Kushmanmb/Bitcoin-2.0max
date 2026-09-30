@@ -1885,3 +1885,53 @@ body {
     display: none;
   }
 }
+/* =========================================================
+   HALLOWEEN LOGO
+========================================================= */
+
+.halloween-theme .nav__logo .logo-symbol {
+  color: #ff7a00;
+
+  text-shadow:
+    0 0 8px rgba(255, 122, 0, 0.9),
+    0 0 18px rgba(255, 122, 0, 0.55),
+    0 0 30px rgba(155, 77, 255, 0.35);
+
+  animation: halloweenLogoPulse 3s ease-in-out infinite;
+}
+
+.halloween-theme .nav__logo .logo-text {
+  text-shadow:
+    0 0 10px rgba(255, 122, 0, 0.35),
+    0 0 18px rgba(155, 77, 255, 0.20);
+}
+
+/* Add pumpkin without changing HTML */
+.halloween-theme .nav__logo .logo-text::after {
+  content: " 🎃";
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.85em;
+
+  filter:
+    drop-shadow(0 0 6px rgba(255, 122, 0, 0.65));
+}
+
+@keyframes halloweenLogoPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+    filter: brightness(1.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halloween-theme .nav__logo .logo-symbol {
+    animation: none;
+  }
+}
