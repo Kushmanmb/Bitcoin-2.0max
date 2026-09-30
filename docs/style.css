@@ -1508,15 +1508,12 @@ html {
 }
 
 body {
-  background-image:
+  background:
     linear-gradient(
-      rgba(0, 0, 0, 0.30),
-      rgba(0, 0, 0, 0.50)
+      rgba(0, 0, 0, 0.20),
+      rgba(0, 0, 0, 0.35)
     ),
-    url("./bitcoin2max-background.png");
+    url("./bitcoin2max-background.png") center top / cover no-repeat fixed !important;
 
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  background-color: #050505 !important;
 }
