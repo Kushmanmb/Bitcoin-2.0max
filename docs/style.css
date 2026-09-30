@@ -1591,3 +1591,58 @@ body {
     padding: 18px;
   }
 }
+/* =========================================================
+   CATCHFUNDS NETWORK COLORS
+========================================================= */
+
+.network-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+/* Bitcoin */
+.network-badge--btc {
+  color: #f7931a;
+  background: rgba(247, 147, 26, 0.12);
+}
+
+.catchfunds-card--btc {
+  border-color: rgba(247, 147, 26, 0.55);
+}
+
+/* Bitcoin Cash */
+.network-badge--bch {
+  color: #0ac18e;
+  background: rgba(10, 193, 142, 0.12);
+}
+
+.catchfunds-card--bch {
+  border-color: rgba(10, 193, 142, 0.55);
+}
+
+/* Stellar */
+.network-badge--xlm {
+  color: #2997ff;
+  background: rgba(41, 151, 255, 0.12);
+}
+
+.catchfunds-card--xlm {
+  border-color: rgba(41, 151, 255, 0.55);
+}
+
+/* EVM */
+.network-badge--evm {
+  color: #b44cff;
+  background: rgba(180, 76, 255, 0.12);
+}
+
+.catchfunds-card--evm {
+  border-color: rgba(180, 76, 255, 0.55);
+}
