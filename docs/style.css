@@ -1935,3 +1935,550 @@ body {
     animation: none;
   }
 }
+/* Bitcoin 2.0Max — Copper Dashboard */
+
+:root {
+  --bg: #090b0f;
+  --bg-alt: #0d1016;
+  --surface: #12161d;
+  --surface-2: #191e27;
+  --border: #2c333e;
+  --muted: #a6adb9;
+  --orange: #ff9b45;
+  --orange-bright: #ffc078;
+  --orange-dark: #cc7028;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+}
+
+body {
+  background:
+    radial-gradient(
+      ellipse at 85% 0%,
+      #292019 0%,
+      transparent 42%
+    ),
+    var(--bg);
+  background-attachment: scroll;
+}
+
+:focus-visible {
+  outline: 2px solid var(--orange-bright);
+  outline-offset: 5px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 12px;
+  z-index: 10001;
+  padding: 12px 18px;
+  background: var(--surface);
+  border: 1px solid var(--orange);
+  border-radius: 8px;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+section[id] {
+  scroll-margin-top: calc(var(--nav-height) + 24px);
+}
+
+/* Navigation */
+
+.nav,
+.nav.scrolled {
+  background: rgba(9, 11, 15, 0.94);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.nav__links {
+  gap: 20px;
+}
+
+.nav__links a:hover,
+.nav__links .btn--outline {
+  color: var(--orange-bright);
+}
+
+.logo-symbol {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 155, 69, 0.4);
+  border-radius: 12px;
+  background: rgba(255, 155, 69, 0.08);
+  font-size: 1.5rem;
+}
+
+/* Hero */
+
+.hero {
+  min-height: auto;
+  padding: calc(var(--nav-height) + 76px) 0 58px;
+}
+
+.hero__content {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  grid-template-areas:
+    "pill art"
+    "title art"
+    "subtitle art"
+    "actions art"
+    "note art"
+    "stats stats";
+  gap: 0 54px;
+  text-align: left;
+  align-items: center;
+}
+
+.status-pill {
+  grid-area: pill;
+  margin: 0 0 26px;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+}
+
+.hero h1 {
+  grid-area: title;
+  font-size: clamp(3.8rem, 6.5vw, 6rem);
+  line-height: 1.02;
+  margin: 0 0 24px;
+  font-weight: 800;
+  letter-spacing: -0.065em;
+}
+
+.hero h1 .accent {
+  display: block;
+  text-shadow: none;
+}
+
+.hero__subtitle {
+  grid-area: subtitle;
+  margin: 0 0 28px;
+  max-width: 510px;
+  line-height: 1.8;
+  font-size: 1rem;
+}
+
+.hero__actions {
+  grid-area: actions;
+  justify-content: flex-start;
+  margin: 0;
+}
+
+.hero__note {
+  grid-area: note;
+  color: var(--muted);
+  font-size: 0.76rem;
+  margin-top: 20px;
+}
+
+.hero__logo {
+  grid-area: art;
+  width: 100%;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid rgba(255, 155, 69, 0.25);
+  border-radius: 30px;
+  background:
+    linear-gradient(
+      140deg,
+      rgba(255, 155, 69, 0.09),
+      rgba(255, 255, 255, 0.02)
+    );
+  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.4);
+  transform: rotate(-3deg);
+}
+
+.hero__logo img {
+  width: 100%;
+  max-height: none;
+  border-radius: 18px;
+  filter: none;
+}
+
+.hero__grid {
+  opacity: 0.4;
+  background-size: 64px 64px;
+}
+
+.hero__stats {
+  grid-area: stats;
+  width: 100%;
+  max-width: none;
+  margin: 64px 0 0;
+  background: rgba(18, 22, 29, 0.95);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.16);
+}
+
+.stat {
+  align-items: flex-start;
+  padding: 22px 30px;
+}
+
+.stat__value {
+  color: #f4ede4;
+  font-size: 1.65rem;
+}
+
+.stat__label {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+/* Buttons and sections */
+
+.btn {
+  min-height: 44px;
+  border-radius: 11px;
+}
+
+.btn--primary {
+  box-shadow: 0 6px 24px rgba(255, 155, 69, 0.12);
+}
+
+.btn--ghost {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.section {
+  padding: 74px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.section--alt {
+  background: rgba(13, 16, 22, 0.7);
+}
+
+.section__header {
+  text-align: left;
+  margin-bottom: 30px;
+}
+
+.section__title {
+  letter-spacing: -0.04em;
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+}
+
+.section__subtitle {
+  margin-left: 0;
+  line-height: 1.8;
+}
+
+.section__eyebrow {
+  font-size: 0.67rem;
+  letter-spacing: 0.18em;
+}
+
+/* Dashboard panels */
+
+.dashboard-card,
+.table-card,
+.node-panel,
+.tx-result,
+.step,
+.catchfunds-card {
+  background: linear-gradient(145deg, #171c24, #10141b);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-card {
+  padding: 26px;
+}
+
+.dashboard-card::after {
+  background: rgba(255, 155, 69, 0.07);
+}
+
+.card-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(255, 155, 69, 0.08);
+}
+
+.dashboard-value {
+  font-size: 1.8rem;
+}
+
+.dashboard-detail {
+  line-height: 1.7;
+}
+
+.empty-state {
+  padding: 28px 20px;
+  gap: 4px;
+}
+
+.empty-state strong {
+  color: #eceff5;
+}
+
+.empty-state small {
+  max-width: 420px;
+  line-height: 1.8;
+}
+
+th {
+  background: #191e27;
+  color: #b6becb;
+}
+
+td {
+  color: #dde3ed;
+}
+
+.table-header {
+  padding: 22px;
+}
+
+/* Transaction search */
+
+.tx-search,
+.tx-result,
+.steps {
+  max-width: none;
+}
+
+.tx-search input {
+  background: #10141b;
+  padding: 16px 18px;
+}
+
+.tx-search input::placeholder {
+  color: #a6adb9;
+}
+
+.tx-search .btn {
+  padding: 12px 24px;
+}
+
+.node-panel__header {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+pre {
+  background: #090c11;
+  border-color: var(--border);
+}
+
+.step__number {
+  font-size: 1.1rem;
+}
+
+.step__content {
+  min-width: 0;
+}
+
+/* CatchFunds */
+
+#catchfunds h2 {
+  font-size: 2.6rem;
+  letter-spacing: -0.04em;
+  margin: 8px 0 18px;
+}
+
+#catchfunds .container > p {
+  color: var(--muted);
+  max-width: 640px;
+}
+
+.catchfunds-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.catchfunds-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+}
+
+.catchfunds-address {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+/* Footer */
+
+.footer {
+  background: #090b0f;
+  padding: 46px 0;
+}
+
+.footer__copy {
+  color: var(--muted);
+}
+
+.footer-signature {
+  width: min(220px, 70vw);
+  border-radius: 12px;
+}
+
+/* October accents */
+
+.halloween-theme {
+  --orange: #ff994a;
+  --orange-bright: #ffc078;
+}
+
+.halloween-theme body {
+  background:
+    radial-gradient(
+      ellipse at 85% 5%,
+      rgba(128, 64, 180, 0.16),
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 15% 15%,
+      rgba(255, 122, 0, 0.1),
+      transparent 40%
+    ),
+    var(--bg);
+  background-attachment: scroll;
+}
+
+.halloween-theme h1,
+.halloween-theme h2,
+.halloween-theme .nav__logo .logo-text {
+  text-shadow: none;
+}
+
+.halloween-theme .hero__logo {
+  border-color: rgba(155, 77, 255, 0.4);
+}
+
+.halloween-theme .dashboard-card {
+  border-top-color: rgba(155, 77, 255, 0.4);
+}
+
+.halloween-theme body::before,
+.halloween-theme body::after {
+  z-index: 3;
+}
+
+.halloween-theme body::before {
+  opacity: 0.25;
+}
+
+/* Tablet and phone layouts */
+
+@media (max-width: 1000px) {
+  .nav__links {
+    gap: 12px;
+  }
+
+  .nav__links a {
+    font-size: 0.78rem;
+  }
+
+  .hero__content {
+    column-gap: 28px;
+  }
+}
+
+@media (max-width: 760px) {
+  .hero {
+    padding-top: calc(var(--nav-height) + 40px);
+  }
+
+  .hero__content {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "pill"
+      "title"
+      "subtitle"
+      "actions"
+      "note"
+      "art"
+      "stats";
+  }
+
+  .hero h1 {
+    font-size: clamp(3.4rem, 13vw, 5rem);
+    margin-top: 0;
+  }
+
+  .hero__logo {
+    transform: none;
+    margin-top: 32px;
+    max-width: 560px;
+    padding: 10px;
+  }
+
+  .hero__stats {
+    margin-top: 28px;
+  }
+
+  .stat {
+    padding: 20px;
+  }
+
+  .section {
+    padding: 52px 0;
+  }
+
+  .nav__links {
+    background: #0d1016;
+  }
+
+  .nav__links a {
+    font-size: 0.95rem;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero__actions {
+    gap: 10px;
+  }
+
+  .hero__actions .btn {
+    padding: 13px 17px;
+    font-size: 0.85rem;
+  }
+
+  .status-pill {
+    font-size: 0.6rem;
+  }
+
+  .node-panel__header {
+    padding: 22px;
+  }
+
+  .nav__logo {
+    font-size: 0.94rem;
+  }
+
+  .halloween-theme .nav__logo .logo-text::after {
+    margin-left: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .btn:hover,
+  .dashboard-card:hover,
+  .catchfunds-card:hover {
+    transform: none;
+  }
+}
