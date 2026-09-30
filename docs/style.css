@@ -2900,3 +2900,100 @@ pre {
     gap: 4px;
   }
 }
+#btcPriceBanner.btc-price-card {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 18px 28px;
+  width: 100%;
+  margin: 28px 0;
+  padding: 28px 32px;
+  box-sizing: border-box;
+  border: 2px solid #ffb347;
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      ellipse at top left,
+      rgba(255, 174, 66, 0.28),
+      transparent 65%
+    ),
+    linear-gradient(135deg, #382012, #16100d 60%, #482715);
+  color: #fff1d6;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.4),
+    0 0 24px rgba(255, 157, 45, 0.25),
+    inset 0 0 22px rgba(255, 179, 71, 0.08);
+  animation: btcCardGlow 3s ease-in-out infinite alternate;
+}
+
+#btcPriceBanner .btc-banner__logo {
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px rgba(255, 179, 71, 0.6));
+}
+
+#btcPriceBanner #btcPriceValue {
+  display: block;
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: #ffd080;
+  text-shadow: 0 0 20px rgba(255, 174, 66, 0.4);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+#btcPriceBanner #btcPriceStatus {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #e9c9a0;
+}
+
+#btcPriceBanner a {
+  color: #ffd080;
+  text-underline-offset: 4px;
+}
+
+@keyframes btcCardGlow {
+  from {
+    box-shadow:
+      0 12px 32px rgba(0, 0, 0, 0.4),
+      0 0 18px rgba(255, 157, 45, 0.2);
+  }
+  to {
+    box-shadow:
+      0 12px 32px rgba(0, 0, 0, 0.4),
+      0 0 36px rgba(255, 157, 45, 0.45);
+  }
+}
+
+#btcPriceBanner.btc-banner--offline {
+  border-color: #b89b7a;
+  animation: none;
+}
+
+@media (max-width: 600px) {
+  #btcPriceBanner.btc-price-card {
+    padding: 22px 16px;
+    gap: 14px;
+    text-align: center;
+  }
+
+  #btcPriceBanner .btc-banner__logo {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #btcPriceBanner.btc-price-card {
+    animation: none;
+  }
+}
