@@ -1171,11 +1171,13 @@ async function searchBitcoinTransaction() {
       const chain = data.chain_stats;
       const pending = data.mempool_stats;
 
-      if (
-        !chain || !pending ||
-        typeof chain.tx_count !== "number" ||
-        typeof pending.tx_count !== "number"
-      ) {
+      const statsValid = stats =>
+        stats &&
+        typeof stats.tx_count === "number" &&
+        typeof stats.funded_txo_sum === "number" &&
+        typeof stats.spent_txo_sum === "number";
+
+      if (!statsValid(chain) || !statsValid(pending)) {
         throw new Error("Unexpected response from lookup provider.");
       }
 
