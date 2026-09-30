@@ -124,4 +124,11 @@
     "orientationchange",
     scheduleSyncBannerHeight
   );
+
+  const logo = banner.querySelector(".btc-banner__logo");
+  if (logo && !logo.complete) {
+    logo.addEventListener("load", scheduleSyncBannerHeight, {
+      once: true
+    });
+  }
 })();
