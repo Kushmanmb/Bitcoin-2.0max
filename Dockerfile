@@ -50,7 +50,7 @@ VOLUME ["/var/lib/bitcoin2max"]
 
 USER bitcoin2max
 
-EXPOSE 8333 9050
+EXPOSE 8080 8333 9050
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD []

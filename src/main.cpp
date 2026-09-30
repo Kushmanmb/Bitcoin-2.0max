@@ -65,13 +65,14 @@ bitcoin2max::HttpServer httpServer(
     std::signal(SIGINT,  handleSignal);
     std::signal(SIGTERM, handleSignal);
 
-    node.start();
+   // Start the local status endpoint before network initialization so it
+   // remains available while optional Electrum connections are retried.
+   if (!httpServer.start()) {
+       std::cerr << "[main] Failed to start HTTP status server.\n";
+       return EXIT_FAILURE;
+   }
 
-if (!httpServer.start()) {
-    std::cerr << "[main] Failed to start HTTP status server.\n";
-    node.stop();
-    return EXIT_FAILURE;
-}
+   node.start();
 
 node.join();
 httpServer.stop();
