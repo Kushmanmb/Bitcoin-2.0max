@@ -1521,3 +1521,73 @@ body {
     background-color: #050505 !important;
 }
 
+/* =========================================================
+   CATCHFUNDS DASHBOARD
+========================================================= */
+
+#catchfundsDashboard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.catchfunds-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(5, 5, 5, 0.88);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+
+.catchfunds-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.catchfunds-card__header strong {
+  font-size: 1.1rem;
+}
+
+.catchfunds-card__header span {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.catchfunds-card small {
+  opacity: 0.75;
+  line-height: 1.6;
+}
+
+.catchfunds-address {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.catchfunds-copy {
+  width: 100%;
+  margin-top: auto;
+}
+
+@media (max-width: 720px) {
+  #catchfundsDashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .catchfunds-card {
+    padding: 18px;
+  }
+}
