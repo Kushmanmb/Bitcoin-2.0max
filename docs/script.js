@@ -1401,19 +1401,97 @@ if (liveBlocksTable) {
     );
   });
 }
-/* =========================================================
-   SEASONAL THEME — HALLOWEEN
-   Automatically active during October
-========================================================= */
+/* Theme switcher */
+(() => {
+  "use strict";
 
-function applySeasonalTheme() {
-  const now = new Date();
-  const isOctober = now.getMonth() === 9;
+  const root = document.documentElement;
+  const key = "ksmb-site-theme";
+  const choices = ["auto", "bitcoin", "halloween", "light"];
 
-  document.documentElement.classList.toggle(
-    "halloween-theme",
-    isOctober
-  );
-}
+  let selected = "auto";
 
-applySeasonalTheme();
+  try {
+    const saved = localStorage.getItem(key);
+    if (choices.includes(saved)) selected = saved;
+  } catch {}
+
+  function apply() {
+    const theme = selected === "auto"
+      ? (new Date().getMonth() === 9 ? "halloween" : "bitcoin")
+      : selected;
+
+    root.dataset.theme = theme;
+
+    root.classList.toggle(
+      "halloween-theme",
+      theme === "halloween"
+    );
+
+    root.style.colorScheme =
+      theme === "light" ? "light" : "dark";
+
+    const meta = document.querySelector(
+      'meta[name="theme-color"]'
+    );
+
+    if (meta) {
+      meta.content = theme === "light"
+        ? "#f7f8fc"
+        : "#090b0f";
+    }
+  }
+
+  apply();
+
+  const menu = document.getElementById("navLinks");
+
+  if (!menu || document.getElementById("themeSelect")) return;
+
+  const item = document.createElement("li");
+  item.className = "theme-control";
+
+  const label = document.createElement("label");
+  label.htmlFor = "themeSelect";
+  label.textContent = "Theme";
+
+  const select = document.createElement("select");
+  select.id = "themeSelect";
+
+  for (const [value, text] of [
+    ["auto", "Auto"],
+    ["bitcoin", "Bitcoin"],
+    ["halloween", "Halloween"],
+    ["light", "Light"]
+  ]) {
+    select.add(new Option(text, value));
+  }
+
+  select.value = selected;
+  item.append(label, select);
+  menu.append(item);
+
+  select.addEventListener("change", () => {
+    selected = select.value;
+    apply();
+
+    try {
+      localStorage.setItem(key, selected);
+    } catch {}
+  });
+
+  window.addEventListener("storage", event => {
+    if (event.key !== key && event.key !== null) return;
+
+    selected = choices.includes(event.newValue)
+      ? event.newValue
+      : "auto";
+
+    select.value = selected;
+    apply();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) apply();
+  });
+})();
