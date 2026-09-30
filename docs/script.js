@@ -840,105 +840,7 @@
   }
 
 
-  async function searchTransaction() {
-
-    if (!txSearch) {
-      return;
-    }
-
-
-    const txid =
-      txSearch.value.trim();
-
-
-    if (!txid) {
-
-      showTransactionMessage(
-        "Transaction ID required",
-        "Enter a Bitcoin 2.0max transaction ID."
-      );
-
-      return;
-
-    }
-
-
-    showTransactionMessage(
-      "Searching...",
-      shortenHash(txid)
-    );
-
-
-    try {
-
-      const tx =
-        await apiRequest(
-          "/transaction/" +
-          encodeURIComponent(
-            txid
-          )
-        );
-
-
-      renderTransaction(
-        tx
-      );
-
-    } catch (error) {
-
-      if (!CONFIG.apiBaseUrl) {
-
-        showTransactionMessage(
-          "Node API not connected",
-          "Transaction lookup will become active when the Bitcoin 2.0max node API is running."
-        );
-
-        return;
-
-      }
-
-
-      showTransactionMessage(
-        "Transaction not found",
-        error.message
-      );
-
-    }
-
-  }
-
-
-  if (
-    txSearchButton &&
-    txSearch
-  ) {
-
-    txSearchButton.addEventListener(
-      "click",
-      searchTransaction
-    );
-
-
-    txSearch.addEventListener(
-      "keydown",
-      function (event) {
-
-        if (
-          event.key ===
-          "Enter"
-        ) {
-
-          searchTransaction();
-
-        }
-
-      }
-    );
-
-  }
-
-
-  /*
+   /*
    * ========================================================
    * DASHBOARD REFRESH
    * ========================================================
@@ -1156,3 +1058,134 @@ setInterval(() => {
   loadBitcoinData();
   loadBitcoinBlocks();
 }, 60000);
+
+/* =========================================================
+   LIVE BITCOIN TRANSACTION SEARCH
+========================================================= */
+
+async function searchBitcoinTransaction() {
+  const input = document.getElementById("txSearch");
+  const result = document.getElementById("txResult");
+
+  if (!input || !result) return;
+
+  const txid = input.value.trim();
+
+  if (!/^[a-fA-F0-9]{64}$/.test(txid)) {
+    result.innerHTML = `
+      <div class="empty-state">
+        <span>₿</span>
+        <strong>Invalid Bitcoin TXID</strong>
+        <small>Enter a 64-character Bitcoin transaction ID.</small>
+      </div>
+    `;
+    return;
+  }
+
+  result.innerHTML = `
+    <div class="empty-state">
+      <span>₿</span>
+      <strong>Searching Bitcoin Mainnet...</strong>
+    </div>
+  `;
+
+  try {
+    const response = await fetch(
+      `${BTC_API}/tx/${encodeURIComponent(txid)}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Transaction not found");
+    }
+
+    const tx = await response.json();
+
+    const confirmed = tx.status?.confirmed === true;
+
+    const totalOutput = (tx.vout || []).reduce(
+      (sum, output) => sum + (output.value || 0),
+      0
+    );
+
+    const btc = totalOutput / 100000000;
+
+    result.innerHTML = `
+      <div style="padding:24px;overflow-wrap:anywhere">
+
+        <div class="section__eyebrow">
+          BITCOIN MAINNET TRANSACTION
+        </div>
+
+        <p>
+          <strong>TXID</strong><br>
+          ${tx.txid}
+        </p>
+
+        <p>
+          <strong>Status</strong><br>
+          ${confirmed ? "CONFIRMED" : "UNCONFIRMED"}
+        </p>
+
+        <p>
+          <strong>Block Height</strong><br>
+          ${tx.status?.block_height ?? "Pending"}
+        </p>
+
+        <p>
+          <strong>Fee</strong><br>
+          ${(tx.fee ?? 0).toLocaleString()} sats
+        </p>
+
+        <p>
+          <strong>Total Outputs</strong><br>
+          ${btc.toFixed(8)} BTC
+        </p>
+
+        <p>
+          <strong>Inputs / Outputs</strong><br>
+          ${(tx.vin || []).length} / ${(tx.vout || []).length}
+        </p>
+
+      </div>
+    `;
+
+  } catch (error) {
+
+    console.error("Bitcoin transaction error:", error);
+
+    result.innerHTML = `
+      <div class="empty-state">
+        <span>₿</span>
+        <strong>Transaction not found</strong>
+        <small>
+          Check the TXID and try again.
+        </small>
+      </div>
+    `;
+  }
+}
+
+/* Connect existing transaction-search controls */
+const bitcoinTxButton =
+  document.getElementById("txSearchButton");
+
+const bitcoinTxInput =
+  document.getElementById("txSearch");
+
+if (bitcoinTxButton) {
+  bitcoinTxButton.addEventListener(
+    "click",
+    searchBitcoinTransaction
+  );
+}
+
+if (bitcoinTxInput) {
+  bitcoinTxInput.addEventListener(
+    "keydown",
+    event => {
+      if (event.key === "Enter") {
+        searchBitcoinTransaction();
+      }
+    }
+  );
+}
