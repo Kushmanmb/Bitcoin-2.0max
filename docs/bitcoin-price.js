@@ -116,10 +116,14 @@
   // wrapping on narrower viewports). The resize listener is kept as
   // a fallback/belt-and-braces for browsers without ResizeObserver
   // and for edge cases where the viewport changes without altering
-  // the observed element's box size.
+  // the observed element's box size. The observer reference is kept
+  // so it can be disconnected if the banner is ever removed.
+  let bannerResizeObserver = null;
   if (typeof ResizeObserver === "function") {
-    const observer = new ResizeObserver(scheduleSyncBannerHeight);
-    observer.observe(banner);
+    bannerResizeObserver = new ResizeObserver(
+      scheduleSyncBannerHeight
+    );
+    bannerResizeObserver.observe(banner);
   }
 
   window.addEventListener("resize", scheduleSyncBannerHeight);
