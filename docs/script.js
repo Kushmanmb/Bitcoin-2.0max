@@ -1098,6 +1098,9 @@ async function searchBitcoinTransaction() {
     return;
   }
 
+  /* Legacy Base58Check addresses are case-sensitive, so only
+     tx IDs and bech32 addresses (which are case-insensitive
+     per BIP173) are normalized to lowercase here. */
   const value = isTx || isBech32 ? query.toLowerCase() : query;
   const kind = isTx ? "tx" : "address";
 
@@ -1167,6 +1170,10 @@ async function searchBitcoinTransaction() {
     } else {
       const chain = data.chain_stats;
       const pending = data.mempool_stats;
+
+      if (!chain || !pending) {
+        throw new Error("Unexpected response from lookup provider.");
+      }
 
       fields = [
         ["Address", value],
