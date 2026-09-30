@@ -1513,7 +1513,7 @@ body {
       rgba(0, 0, 0, 0.20),
       rgba(0, 0, 0, 0.35)
     ),
-    url("./bitcoin2max-background-v2.png.PNG")
+        url("./bitcoin2max-background-v2.png.PNG");
     background-position: center top;
     background-size: cover;
     background-repeat: no-repeat;
