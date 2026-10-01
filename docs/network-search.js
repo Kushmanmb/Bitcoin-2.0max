@@ -251,6 +251,7 @@ document.body.classList.remove("network-search-ready");
           ". Existence and ownership have not been verified.";
 
         result.hidden = false;
+        status.appendChild(result);
         result.focus();
       } catch (error) {
         status.textContent = error.message;
