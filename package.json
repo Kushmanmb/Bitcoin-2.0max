@@ -1,0 +1,10 @@
+{
+  "name": "bitcoin2max-dashboard",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.0.0 <25" },
+  "scripts": {
+    "start": "node dashboard-server/server.mjs",
+    "test:dashboard": "node --test dashboard-server/server.test.mjs"
+  }
+}

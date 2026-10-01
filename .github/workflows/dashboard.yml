@@ -1,0 +1,18 @@
+name: Personal dashboard
+on:
+  pull_request:
+    paths: ['dashboard-server/**', 'docs/dashboard.*', 'package.json', '.github/workflows/dashboard.yml']
+  push:
+    paths: ['dashboard-server/**', 'docs/dashboard.*', 'package.json', '.github/workflows/dashboard.yml']
+permissions:
+  contents: read
+jobs:
+  account-and-chat-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check docs/dashboard.js
+      - run: npm run test:dashboard

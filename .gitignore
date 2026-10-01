@@ -73,6 +73,9 @@ auth.json
 # Node data directory (contains chain state, peer data, etc.)
 .bitcoin2max/
 data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 *.log
 *.pid
 

@@ -11,6 +11,12 @@
 
 ## Key Features
 
+### Personal dashboard and community
+
+Open `docs/dashboard.html` for the new personal command center. Run `npm start`
+with Node.js 24 to enable real accounts, saved portfolios and community chat.
+See [DASHBOARD-SETUP.md](DASHBOARD-SETUP.md) for commands and hosting requirements.
+
 | Feature | Value |
 |---|---|
 | Target block time | **60 seconds** (10× faster than legacy Bitcoin) |
