@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="description"
+    content="Bitcoin 2.0max — an open-source high-performance blockchain and node project."
+  >
+
+  <meta name="theme-color" content="#050505">
+
+  <title>Bitcoin2.0Max + Ethereum | Network Dashboard</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <link
+    rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E₿%3C/text%3E%3C/svg%3E"
+  >
+ <script src="avatar.js" defer></script>
+ <script src="bitcoin-chart.js" defer></script>
+ <script src="ethereum-dashboard.js" defer></script>
+</head>
+<body>
+
+  <a class="skip-link" href="#network">Skip to dashboard</a>
+
+  <!-- =========================
+       BITCOIN PRICE BANNER
+  ========================== -->
+
+  <div class="btc-banner" id="btcPriceBanner">
+
+    <div class="btc-banner__inner">
+
+      <a
+        href="#top"
+        class="btc-banner__brand"
+        aria-label="Bitcoin 2.0max home"
+      >
+        <img
+          src="./Bitcoin2.0Max%20%2B%20Ethereum.jpg"
+          alt="Bitcoin 2.0max logo"
+          class="btc-banner__logo"
+          width="36"
+          height="36"
+        >
+
+        <span class="btc-banner__label">
+          <span
+            class="btc-banner__eyebrow"
+            title="Bitcoin Mainnet · BTC/USD"
+          >
+            Bitcoin Mainnet · BTC/USD
+          </span>
+          <span class="btc-banner__provider">
+            via mempool.space
+          </span>
+        </span>
+      </a>
+
+      <div class="btc-banner__quote">
+        <strong
+          id="btcPriceValue"
+          class="btc-banner__value"
+        >
+          —
+        </strong>
+
+        <small
+          id="btcPriceStatus"
+          class="btc-banner__status"
+          role="status"
+        >
+          Loading price…
+        </small>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       NAVIGATION
+  ========================== -->
+
+  <nav class="nav" id="navbar">
+
+    <div class="nav__inner">
+
+      <a href="#top" class="nav__logo">
+        <span class="logo-symbol">₿</span>
+        <span class="logo-text">Bitcoin2.0<strong>Max</strong> + Ethereum</span>
+      </a>
+
+      <button
+        class="nav__toggle"
+        id="navToggle"
+        aria-label="Open navigation"
+        aria-expanded="false"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <ul class="nav__links" id="navLinks">
+
+        <li>
+          <a href="dashboard.html">My Dashboard ↗</a>
+        </li>
+
+        <li>
+          <a href="#network">Network</a>
+        </li>
+
+        <li>
+          <a href="#blocks">Blocks</a>
+        </li>
+
+        <li>
+          <a href="#transactions">Transactions</a>
+        </li>
+
+        <li>
+          <a href="#node">Node</a>
+        </li>
+
+        <li>
+          <a href="#get-started">Get Started</a>
+        </li>
+
+        <li>
+          <a
+            href="https://github.com/Kushmanmb/Bitcoin-2.0max"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn--outline btn--sm"
+          >
+            GitHub ↗
+          </a>
+        </li>
+
+      </ul>
+
+    </div>
+
+  </nav>
+
+
+  <!-- =========================
+       PAGE
+  ========================== -->
+
+  <main id="top">
+
+    <!-- =========================
+         HERO
+    ========================== -->
+
+    <header class="hero">
+
+      <div class="hero__grid"></div>
+
+      <div class="container hero__content">
+
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          BITCOIN 2.0MAX NETWORK
+        </div>
+
+        <!--
+          PLACE YOUR LOGO HERE
+
+          File:
+          docs/assets/bitcoin-2-0max.jpeg
+        -->
+
+        <div class="hero__logo">
+
+          <img
+  src="./Bitcoin2.0Max%20%2B%20Ethereum.jpg"
+  alt="Bitcoin 2.0MAX"
+>
+
+        </div>
+
+        <h1>Bitcoin2.0Max <span class="accent">+ Ethereum</span></h1>
+
+        <p class="hero__subtitle">
+
+          Open-source blockchain infrastructure built around
+          high-throughput blocks, peer-to-peer networking,
+          transaction processing and independent node operation.
+
+        </p>
+
+        <div class="hero__actions">
+
+          <a
+            href="#network"
+            class="btn btn--primary btn--lg"
+          >
+            Explore Network
+          </a>
+
+          <a
+            href="https://github.com/Kushmanmb/Bitcoin-2.0max"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn--ghost btn--lg"
+          >
+            View Source ↗
+          </a>
+
+        </div>
+
+        <div class="hero__stats">
+
+          <div class="stat">
+
+            <span
+              class="stat__value"
+              id="heroBlockHeight"
+            >
+              —
+            </span>
+
+            <span class="stat__label">
+              Block Height
+            </span>
+
+          </div>
+
+          <div class="stat">
+
+            <span
+              class="stat__value"
+              id="heroPeers"
+            >
+              —
+            </span>
+
+            <span class="stat__label">
+              Peers
+            </span>
+
+          </div>
+
+          <div class="stat">
+
+            <span
+              class="stat__value"
+              id="heroMempool"
+            >
+              —
+            </span>
+
+            <span class="stat__label">
+              Mempool TX
+            </span>
+
+          </div>
+
+          <div class="stat">
+
+            <span
+              class="stat__value"
+            >
+              60s
+            </span>
+
+            <span class="stat__label">
+              Target Block
+            </span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </header>
+
+
+    <!-- =========================
+         NETWORK
+    ========================== -->
+
+    <section
+      class="section"
+      id="network"
+      tabindex="-1"
+    >
+
+      <div class="container">
+
+        <div class="section__header">
+
+          <div class="section__eyebrow">
+            LIVE NETWORK
+          </div>
+
+          <h2 class="section__title">
+            Network Status
+          </h2>
+
+          <p class="section__subtitle">
+            Real node information will be displayed here when
+            the Bitcoin 2.0max API is connected.
+          </p>
+
+        </div>
+
+
+        <div class="dashboard-grid">
+
+          <article class="dashboard-card">
+
+            <div class="dashboard-card__top">
+
+              <span class="card-icon">◉</span>
+
+              <span class="card-label">
+                NODE STATUS
+              </span>
+
+            </div>
+
+            <div
+              class="dashboard-value status-value"
+              id="nodeStatus"
+            >
+              OFFLINE
+            </div>
+
+            <div
+              class="dashboard-detail"
+              id="nodeStatusDetail"
+            >
+              Waiting for node API
+            </div>
+
+          </article>
+
+
+          <article class="dashboard-card">
+
+            <div class="dashboard-card__top">
+
+              <span class="card-icon">◆</span>
+
+              <span class="card-label">
+                BLOCK HEIGHT
+              </span>
+
+            </div>
+
+            <div
+              class="dashboard-value"
+              id="blockHeight"
+            >
+              —
+            </div>
+
+            <div class="dashboard-detail">
+              Current chain height
+            </div>
+
+          </article>
+
+
+          <article class="dashboard-card">
+
+            <div class="dashboard-card__top">
+
+              <span class="card-icon">⇄</span>
+
+              <span class="card-label">
+                PEERS
+              </span>
+
+            </div>
+
+            <div
+              class="dashboard-value"
+              id="peerCount"
+            >
+              —
+            </div>
+
+            <div class="dashboard-detail">
+              Connected network peers
+            </div>
+
+          </article>
+
+
+          <article class="dashboard-card">
+
+            <div class="dashboard-card__top">
+
+              <span class="card-icon">⛓</span>
+
+              <span class="card-label">
+                MEMPOOL
+              </span>
+
+            </div>
+
+            <div
+              class="dashboard-value"
+              id="mempoolCount"
+            >
+              —
+            </div>
+
+            <div class="dashboard-detail">
+              Unconfirmed transactions
+            </div>
+
+          </article>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         BLOCKS
+    ========================== -->
+
+    <section
+      class="section section--alt"
+      id="blocks"
+    >
+
+      <div class="container">
+
+        <div class="section__header">
+
+          <div class="section__eyebrow">
+            BLOCKCHAIN
+          </div>
+
+          <h2 class="section__title">
+            Latest Blocks
+          </h2>
+
+          <p class="section__subtitle">
+            Recent Bitcoin 2.0max blocks will appear here when
+            the node backend is connected.
+          </p>
+
+        </div>
+
+
+        <div class="table-card">
+
+          <div class="table-scroll">
+
+            <table>
+
+              <thead>
+
+                <tr>
+                  <th>HEIGHT</th>
+                  <th>HASH</th>
+                  <th>TRANSACTIONS</th>
+                  <th>TIME</th>
+                  <th>SIZE</th>
+                </tr>
+
+              </thead>
+
+              <tbody id="blocksTable">
+
+                <tr>
+
+                  <td colspan="5">
+
+                    <div class="empty-state">
+
+                      <span>⛓</span>
+
+                      <strong>
+                        Waiting for blockchain data
+                      </strong>
+
+                      <small>
+                        Connect a Bitcoin 2.0max node API
+                        to display live blocks.
+                      </small>
+
+                    </div>
+
+                  </td>
+
+                </tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         TRANSACTIONS
+    ========================== -->
+
+    <section
+      class="section"
+      id="transactions"
+    >
+
+      <div class="container">
+
+        <div class="section__header">
+
+          <div class="section__eyebrow">
+            TRANSACTIONS
+          </div>
+
+          <h2 class="section__title">
+            Address &amp; Transaction Lookup
+          </h2>
+
+          <p class="section__subtitle">
+            Search Bitcoin Mainnet addresses and transactions.
+          </p>
+
+        </div>
+
+
+        <div class="tx-search">
+
+          <input
+            type="text"
+            id="txSearch"
+            placeholder="Search Bitcoin address or transaction ID..."
+            autocomplete="off"
+            aria-label="Bitcoin address or transaction ID"
+          >
+
+          <button
+            type="button"
+            class="btn btn--primary"
+            id="txSearchButton"
+          >
+            Search
+          </button>
+
+        </div>
+
+
+        <div
+          class="tx-result"
+          id="txResult"
+        >
+
+          <div class="empty-state">
+
+            <span>₿</span>
+
+            <strong>
+              Bitcoin Mainnet Explorer
+            </strong>
+
+            <small>
+              Enter a Bitcoin address or transaction ID above.
+            </small>
+
+          </div>
+
+        </div>
+
+
+        <div class="table-card">
+
+          <div class="table-header">
+
+            <div>
+              <strong>
+                Recent Transactions
+              </strong>
+
+              <span>
+                Live Bitcoin Mainnet data
+              </span>
+            </div>
+
+          </div>
+
+          <div class="table-scroll">
+
+            <table>
+
+              <thead>
+
+                <tr>
+                  <th>TXID</th>
+                  <th>STATUS</th>
+                  <th>BLOCK</th>
+                  <th>VALUE</th>
+                </tr>
+
+              </thead>
+
+              <tbody id="transactionsTable">
+
+                <tr>
+
+                  <td colspan="4">
+
+                    <div class="empty-state">
+
+                      <span>₿</span>
+
+                      <strong>
+                        No transaction data yet
+                      </strong>
+
+                      <small>
+                        Connect the node API to display transactions.
+                      </small>
+
+                    </div>
+
+                  </td>
+
+                </tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         NODE
+    ========================== -->
+
+    <section
+      class="section section--alt"
+      id="node"
+    >
+
+      <div class="container">
+
+        <div class="section__header">
+
+          <div class="section__eyebrow">
+            INFRASTRUCTURE
+          </div>
+
+          <h2 class="section__title">
+            Bitcoin 2.0max Node
+          </h2>
+
+          <p class="section__subtitle">
+            Monitor the software powering the network.
+          </p>
+
+        </div>
+
+
+        <div class="node-panel">
+
+          <div class="node-panel__header">
+
+            <div>
+
+              <span class="live-indicator">
+                <span></span>
+                NODE MONITOR
+              </span>
+
+              <h3>
+                Bitcoin 2.0max Core
+              </h3>
+
+            </div>
+
+            <div
+              class="connection-badge"
+              id="connectionBadge"
+            >
+              NOT CONNECTED
+            </div>
+
+          </div>
+
+
+          <div class="node-grid">
+
+            <div class="node-stat">
+
+              <span>
+                SOFTWARE
+              </span>
+
+              <strong id="nodeVersion">
+                Bitcoin 2.0max
+              </strong>
+
+            </div>
+
+
+            <div class="node-stat">
+
+              <span>
+                VERSION
+              </span>
+
+              <strong id="nodeVersionNumber">
+                2.0.0
+              </strong>
+
+            </div>
+
+
+            <div class="node-stat">
+
+              <span>
+                NETWORK
+              </span>
+
+              <strong id="nodeNetwork">
+                Bitcoin 2.0max
+              </strong>
+
+            </div>
+
+
+            <div class="node-stat">
+
+              <span>
+                P2P PORT
+              </span>
+
+              <strong>
+                8333
+              </strong>
+
+            </div>
+
+
+            <div class="node-stat">
+
+              <span>
+                RPC PORT
+              </span>
+
+              <strong>
+                8332
+              </strong>
+
+            </div>
+
+
+            <div class="node-stat">
+
+              <span>
+                BLOCK TARGET
+              </span>
+
+              <strong>
+                60 seconds
+              </strong>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         GET STARTED
+    ========================== -->
+
+    <section
+      class="section"
+      id="get-started"
+    >
+
+      <div class="container">
+
+        <div class="section__header">
+
+          <div class="section__eyebrow">
+            BUILD THE NETWORK
+          </div>
+
+          <h2 class="section__title">
+            Run a Node
+          </h2>
+
+          <p class="section__subtitle">
+            Build Bitcoin 2.0max from source and start your own node.
+          </p>
+
+        </div>
+
+
+        <div class="steps">
+
+          <article class="step">
+
+            <div class="step__number">
+              01
+            </div>
+
+            <div class="step__content">
+
+              <h3>
+                Clone the repository
+              </h3>
+
+              <pre><code>git clone https://github.com/Kushmanmb/Bitcoin-2.0max.git
+cd Bitcoin-2.0max</code></pre>
+
+            </div>
+
+          </article>
+
+
+          <article class="step">
+
+            <div class="step__number">
+              02
+            </div>
+
+            <div class="step__content">
+
+              <h3>
+                Build Bitcoin 2.0max
+              </h3>
+
+              <pre><code>cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)</code></pre>
+
+            </div>
+
+          </article>
+
+
+          <article class="step">
+
+            <div class="step__number">
+              03
+            </div>
+
+            <div class="step__content">
+
+              <h3>
+                Configure your node
+              </h3>
+
+              <pre><code>mkdir -p ~/.bitcoin2max
+cp conf/bitcoin2max.conf ~/.bitcoin2max/bitcoin2max.conf</code></pre>
+
+            </div>
+
+          </article>
+
+
+          <article class="step">
+
+            <div class="step__number">
+              04
+            </div>
+
+            <div class="step__content">
+
+              <h3>
+                Start the node
+              </h3>
+
+              <pre><code>./build/bitcoin2maxd</code></pre>
+
+            </div>
+
+          </article>
+
+        </div>
+
+
+        <div class="action-row">
+
+          <a
+            href="https://github.com/Kushmanmb/Bitcoin-2.0max"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn--primary btn--lg"
+          >
+            Open GitHub Repository ↗
+          </a>
+
+          <a
+            href="https://github.com/Kushmanmb/Bitcoin-2.0max/blob/main/ROADMAP.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn--ghost btn--lg"
+          >
+            View Roadmap ↗
+          </a>
+
+        </div>
+
+      </div>
+
+    </section>
+<!-- =====================================================
+     CATCHFUNDS
+===================================================== -->
+
+<section class="section" id="catchfunds">
+  <div class="container">
+
+    <div class="section__heading">
+      <div>
+        <span class="section__eyebrow">MULTICHAIN RECEIVER</span>
+        <h2>CatchFunds</h2>
+      </div>
+    </div>
+
+    <p>
+      Monitor supported blockchain addresses for donations
+      and assets received across multiple networks.
+    </p>
+
+    <div id="catchfundsDashboard"></div>
+
+  </div>
+</section>
+  </main>
+
+
+  <!-- =========================
+       FOOTER
+  ========================== -->
+
+  <footer class="footer">
+
+    <div class="container footer__inner">
+
+      <div class="footer__brand">
+
+        <span class="logo-symbol">
+          ₿
+        </span>
+
+        <span>
+          Bitcoin 2.0<strong>max</strong>
+        </span>
+
+      </div>
+
+
+      <div class="footer__links">
+
+        <a
+          href="https://github.com/Kushmanmb/Bitcoin-2.0max"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          GitHub
+        </a>
+
+        <a
+          href="https://github.com/Kushmanmb/Bitcoin-2.0max/issues"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Issues
+        </a>
+
+        <a
+          href="https://github.com/Kushmanmb/Bitcoin-2.0max/blob/main/ROADMAP.md"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Roadmap
+        </a>
+
+        <a
+          href="https://github.com/Kushmanmb/Bitcoin-2.0max/blob/main/LICENSE"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          MIT License
+        </a>
+
+      </div>
+
+
+      <p class="footer__copy">
+  Bitcoin 2.0max · Open Source · 2026
+</p>
+
+<img
+  src="./kushmanmb-signature.jpg"
+  alt="Kushmanmb Signature"
+  class="footer-signature"
+>
+      </p>
+
+    </div>
+
+  </footer>
+
+
+  <script src="catchfunds.js"></script>
+<script src="script.js"></script>
+  <script src="bitcoin-price.js"></script>
+
+</body>
+</html>
