@@ -17,6 +17,7 @@ add_executable(bitcoin2max_tests
     test_config.cpp
     test_elliptic_curve.cpp
     test_params.cpp
+    test_native_consensus.cpp
     test_signature.cpp
     test_transaction.cpp
     test_wallet.cpp
@@ -47,6 +48,8 @@ target_sources(bitcoin2max_tests
         ${CMAKE_SOURCE_DIR}/src/node/node.cpp
         ${CMAKE_SOURCE_DIR}/src/electrum/electrum_client.cpp
         ${CMAKE_SOURCE_DIR}/src/config/config.cpp
+        ${CMAKE_SOURCE_DIR}/src/consensus/pow.cpp
+        ${CMAKE_SOURCE_DIR}/src/consensus/regtest_chain.cpp
         ${CMAKE_SOURCE_DIR}/src/crypto/elliptic_curve.cpp
         ${CMAKE_SOURCE_DIR}/src/crypto/signature.cpp
         ${CMAKE_SOURCE_DIR}/src/net/message.cpp

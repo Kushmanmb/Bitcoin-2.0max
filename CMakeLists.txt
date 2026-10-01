@@ -21,6 +21,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
 # ── Options ───────────────────────────────────────────────────────────────────
 option(BUILD_TESTS          "Build unit tests"                  ON)
 option(BUILD_WALLET_DEMO    "Build wallet demo tool"            ON)
+option(BUILD_REGTEST_MINER  "Build isolated native-coin regtest harness" ON)
 option(ENABLE_ELECTRUM      "Enable built-in Electrum client"   ON)
 option(ENABLE_TOR           "Route Electrum traffic over Tor"   OFF)
 option(ENABLE_ASAN          "Enable AddressSanitizer"           OFF)
@@ -113,6 +114,18 @@ if(BUILD_WALLET_DEMO)
 endif()
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+if(BUILD_REGTEST_MINER)
+    add_executable(bitcoin2max_regtest
+        src/tools/regtest_miner.cpp
+        src/consensus/pow.cpp
+        src/consensus/regtest_chain.cpp
+        src/transaction/transaction.cpp
+    )
+    target_include_directories(bitcoin2max_regtest PRIVATE
+        ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
+    target_link_libraries(bitcoin2max_regtest PRIVATE OpenSSL::Crypto)
+endif()
+
 if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)

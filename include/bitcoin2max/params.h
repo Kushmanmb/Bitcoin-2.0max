@@ -3,7 +3,8 @@
 #include <cstdint>
 
 // ── Bitcoin 2.0max consensus parameters ──────────────────────────────────────
-// All values can be overridden at runtime via bitcoin2max.conf.
+// Only settings exposed by Config have runtime overrides. Consensus constants
+// are not made configurable by this header.
 
 namespace bitcoin2max {
 namespace consensus {
