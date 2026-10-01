@@ -1,0 +1,1099 @@
+From 24297ea346053b59609a748676dbdcf3b799c1bc Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Thu, 1 Oct 2026 08:57:36 +0900
+Subject: [PATCH] Add personal portfolio dashboard, persistent accounts and
+ community chat
+
+---
+ .github/workflows/dashboard.yml  |  18 ++
+ .gitignore                       |   3 +
+ DASHBOARD-SETUP.md               | 103 ++++++++++
+ README.md                        |   6 +
+ dashboard-server/server.mjs      | 338 +++++++++++++++++++++++++++++++
+ dashboard-server/server.test.mjs | 123 +++++++++++
+ docs/dashboard.css               |   4 +
+ docs/dashboard.html              |  78 +++++++
+ docs/dashboard.js                | 300 +++++++++++++++++++++++++++
+ docs/index.html                  |   4 +
+ package.json                     |  10 +
+ 11 files changed, 987 insertions(+)
+ create mode 100644 .github/workflows/dashboard.yml
+ create mode 100644 DASHBOARD-SETUP.md
+ create mode 100644 dashboard-server/server.mjs
+ create mode 100644 dashboard-server/server.test.mjs
+ create mode 100644 docs/dashboard.css
+ create mode 100644 docs/dashboard.html
+ create mode 100644 docs/dashboard.js
+ create mode 100644 package.json
+
+diff --git a/.github/workflows/dashboard.yml b/.github/workflows/dashboard.yml
+new file mode 100644
+index 0000000..b1ad646
+--- /dev/null
++++ b/.github/workflows/dashboard.yml
+@@ -0,0 +1,18 @@
++name: Personal dashboard
++on:
++  pull_request:
++    paths: ['dashboard-server/**', 'docs/dashboard.*', 'package.json', '.github/workflows/dashboard.yml']
++  push:
++    paths: ['dashboard-server/**', 'docs/dashboard.*', 'package.json', '.github/workflows/dashboard.yml']
++permissions:
++  contents: read
++jobs:
++  account-and-chat-tests:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-node@v4
++        with:
++          node-version: '24'
++      - run: node --check docs/dashboard.js
++      - run: npm run test:dashboard
+diff --git a/.gitignore b/.gitignore
+index 8dc9c22..c3ad455 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -73,6 +73,9 @@ auth.json
+ # Node data directory (contains chain state, peer data, etc.)
+ .bitcoin2max/
+ data/
++*.sqlite
++*.sqlite-shm
++*.sqlite-wal
+ *.log
+ *.pid
+ 
+diff --git a/DASHBOARD-SETUP.md b/DASHBOARD-SETUP.md
+new file mode 100644
+index 0000000..0715767
+--- /dev/null
++++ b/DASHBOARD-SETUP.md
+@@ -0,0 +1,103 @@
++# Personal dashboard and community chat
++
++The new `docs/dashboard.html` is linked from the website navigation. It includes
++real account registration/login, server-saved workspace data, a portfolio,
++address and transaction bookmarks, watchlists, goals, research notes, account
++export, password changes, color themes, balance hiding, and four community rooms.
++
++## Run locally
++
++Use Node.js 24 LTS. There are no npm dependencies to install.
++
++```bash
++node --version
++npm run test:dashboard
++npm start
++```
++
++Open `http://localhost:3000/dashboard.html` and create an account. Saved data
++persists in `data/dashboard/accounts.sqlite`, which is ignored by Git.
++Registration never creates a blockchain wallet or requests seed phrases.
++
++For a Codespace, open port 3000 and set the exact forwarded URL as APP_ORIGIN:
++
++```bash
++HOST=0.0.0.0 APP_ORIGIN="https://YOUR-CODESPACE-3000.app.github.dev" npm start
++```
++
++The URL must match the browser's origin, with no trailing slash or path. Do not
++use the example placeholder unchanged. Keep development ports private until
++you have reviewed the deployment and moderation configuration.
++
++## Hosting
++
++GitHub Pages serves static files; it cannot run this account server or SQLite.
++The dashboard shows an offline account-service message on a static-only host
++and does not simulate successful logins or browser-only account persistence.
++For live accounts, run the Node service on a server with a persistent data disk
++and serve the website and account API together through an HTTPS reverse proxy.
++
++```bash
++NODE_ENV=production HOST=127.0.0.1 PORT=3000 \
++APP_ORIGIN="https://your-domain.example" \
++DASHBOARD_DATABASE="/persistent/bitcoin2max/accounts.sqlite" \
++DASHBOARD_MODERATOR_IDS="YOUR-EXISTING-ACCOUNT-ID" npm start
++```
++
++Set the real domain. First create the intended moderator account, copy its
++account ID from Account settings, and then restart with that exact ID in
++DASHBOARD_MODERATOR_IDS. Only those existing account IDs can see reports and
++remove other members' messages. Roles are not assigned by unverified email or
++display name. Omit this variable until a moderator account exists.
++
++The backend accepts same-origin mutations only. It stores scrypt password
++hashes, hashed session tokens, and account-owned records in SQLite. Sessions
++use HttpOnly, SameSite=Strict cookies; HTTPS deployments also use Secure and
++the __Host- cookie prefix. Password changes revoke other sessions. Authentication
++and chat are rate limited; each account can save up to 1,000 workspace records.
++The database is not encrypted at rest: protect the host and backups.
++
++This is an initial runnable account service. Before a public production launch,
++add verified email registration and password recovery, stronger operational
++abuse controls, monitoring, database backups, retention policies and security
++review. There is no MFA or passkey login in this implementation. Rate limits
++are process-local and reset on restart; they are not a distributed abuse system.
++
++## Portfolio behavior
++
++- Holdings, quantities and average purchase costs are entered by the user; no
++  wallet balance or on-chain ownership is inferred from saved addresses.
++- BTC/ETH spot quotes are fetched from Coinbase server-side and refreshed on
++  the page every minute. Missing quotes stay missing, and quotes older than
++  five minutes are excluded from valuation.
++- B2MX has no public price feed here. An optional manual price is clearly
++  labeled as the user's estimate. It does not establish a market price.
++- Unpriced assets are excluded; the total is labeled a priced subtotal when
++  any holding has no quote. P/L includes only valued positions.
++- Allocation is calculated from priced holdings. There is no fabricated
++  performance history, guaranteed return, trading or custody functionality.
++- Watchlist targets are checked on the open page; no background notifications
++  are sent. Goals compare against the current estimated portfolio value.
++- Address checks are structural format checks, not checksum or ownership
++  verification. B2MX addresses are placeholders until the native format exists.
++- Export produces a private JSON backup; importing backups is not implemented.
++
++## Community rooms
++
++Members can use lounge, bitcoin, ethereum, and builders rooms. The browser
++polls every four seconds and displays the latest 100 messages per room. Messages
++persist in the database. Members can delete their own messages and report posts;
++configured moderators can review reports and remove any message. Chat text is
++escaped, and private account emails are not exposed in chat responses.
++
++Reporting saves a report for moderator review; it does not automatically remove
++a message. There are no direct messages, file uploads, member bans or automated
++content moderation in this version. Existing avatars and network features on
++the original website remain separate from the personal dashboard.
++
++## Tests
++
++`npm run test:dashboard` covers account isolation, session handling, password
++changes, persisted data, mutation origin checks, validation, chat rooms, spam
++limits, reporting, moderator authorization, export, market quotes and private
++file access. Use a separate development database for UI testing.
+diff --git a/README.md b/README.md
+index 8882f96..1af163f 100644
+--- a/README.md
++++ b/README.md
+@@ -11,6 +11,12 @@
+ 
+ ## Key Features
+ 
++### Personal dashboard and community
++
++Open `docs/dashboard.html` for the new personal command center. Run `npm start`
++with Node.js 24 to enable real accounts, saved portfolios and community chat.
++See [DASHBOARD-SETUP.md](DASHBOARD-SETUP.md) for commands and hosting requirements.
++
+ | Feature | Value |
+ |---|---|
+ | Target block time | **60 seconds** (10× faster than legacy Bitcoin) |
+diff --git a/dashboard-server/server.mjs b/dashboard-server/server.mjs
+new file mode 100644
+index 0000000..0a9b3e1
+--- /dev/null
++++ b/dashboard-server/server.mjs
+@@ -0,0 +1,338 @@
++import http from 'node:http';
++import { DatabaseSync } from 'node:sqlite';
++import { randomBytes, randomUUID, scrypt, timingSafeEqual, createHash } from 'node:crypto';
++import { promisify } from 'node:util';
++import { mkdirSync, chmodSync, readFileSync, realpathSync } from 'node:fs';
++import { resolve, dirname, extname, sep } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
++const derive = promisify(scrypt);
++const SESSION_AGE = 7 * 24 * 60 * 60 * 1000;
++const rooms = ['lounge', 'bitcoin', 'ethereum', 'builders'];
++const symbols = ['BTC', 'ETH', 'B2MX'];
++const types = ['addresses', 'transactions', 'holdings', 'watchlist', 'goals', 'notes'];
++const hashToken = token => createHash('sha256').update(token).digest('hex');
++
++class ApiError extends Error {
++  constructor(status, message) { super(message); this.status = status; }
++}
++function text(value, name, max = 120, required = true) {
++  if (typeof value !== 'string' || value.length > max || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value))
++    throw new ApiError(400, `Invalid ${name}.`);
++  const cleaned = value.trim();
++  if (required && !cleaned) throw new ApiError(400, `${name} is required.`);
++  return cleaned;
++}
++function amount(value, name, optional = false) {
++  if (optional && (value === '' || value == null)) return null;
++  const cleaned = text(String(value ?? ''), name, 45);
++  if (!/^\d+(\.\d{1,18})?$/.test(cleaned) || !Number.isFinite(Number(cleaned)) || Number(cleaned) > 1e12)
++    throw new ApiError(400, `${name} must be a nonnegative number, up to 18 decimal places.`);
++  return cleaned;
++}
++function choice(value, allowed, name) {
++  if (!allowed.includes(value)) throw new ApiError(400, `Invalid ${name}.`);
++  return value;
++}
++function itemPayload(type, raw) {
++  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new ApiError(400, 'Invalid item.');
++  const label = () => text(raw.label, 'Label', 80);
++  if (type === 'addresses' || type === 'transactions') {
++    const network = choice(raw.network, symbols, 'network');
++    const value = text(raw.value, type === 'addresses' ? 'Address' : 'Transaction hash', 128);
++    if (type === 'transactions' && !(network === 'ETH' ? /^0x[0-9a-fA-F]{64}$/ : /^[0-9a-fA-F]{64}$/).test(value))
++      throw new ApiError(400, 'Enter a complete transaction hash for this network.');
++    if (type === 'addresses') {
++      const valid = network === 'ETH' ? /^0x[0-9a-fA-F]{40}$/.test(value) :
++        network === 'BTC' ? /^(bc1[a-zA-HJ-NP-Z0-9]{11,87}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(value) :
++        /^[a-zA-Z0-9]{8,128}$/.test(value);
++      if (!valid) throw new ApiError(400, 'Address format does not match the selected network.');
++    }
++    return { label: label(), network, value, note: text(raw.note ?? '', 'Note', 500, false) };
++  }
++  if (type === 'holdings') return {
++    symbol: choice(raw.symbol, symbols, 'asset'),
++    quantity: amount(raw.quantity, 'Quantity'),
++    averageCost: amount(raw.averageCost, 'Average cost'),
++    manualPrice: amount(raw.manualPrice, 'Manual price', true)
++  };
++  if (type === 'watchlist') return {
++    symbol: choice(raw.symbol, symbols, 'asset'),
++    target: amount(raw.target, 'Target price', true),
++    direction: choice(raw.direction ?? 'above', ['above', 'below'], 'target direction')
++  };
++  if (type === 'goals') return { label: label(), target: amount(raw.target, 'Goal amount') };
++  if (type === 'notes') return { label: label(), body: text(raw.body, 'Note', 2000) };
++  throw new ApiError(400, 'Invalid item type.');
++}
++async function passwordHash(password, salt) {
++  // OWASP scrypt baseline: N=2^17, r=8, p=1; never store plaintext passwords.
++  return Buffer.from(await derive(password, salt, 64, { N: 131072, r: 8, p: 1, maxmem: 192 * 1024 * 1024 }));
++}
++function passwordInput(value) {
++  if (typeof value !== 'string' || value.length < 12 || value.length > 128)
++    throw new ApiError(400, 'Use a password between 12 and 128 characters.');
++  return value;
++}
++async function body(request) {
++  if (!/^application\/json(?:;|$)/i.test(request.headers['content-type'] ?? ''))
++    throw new ApiError(415, 'Send JSON data.');
++  let bytes = 0;
++  const chunks = [];
++  for await (const chunk of request) {
++    bytes += chunk.length;
++    if (bytes > 65536) throw new ApiError(413, 'Request is too large.');
++    chunks.push(chunk);
++  }
++  try {
++    const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
++    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
++    return parsed;
++  } catch { throw new ApiError(400, 'Invalid JSON.'); }
++}
++
++export function createApp({ database = resolve(root, 'data/dashboard/accounts.sqlite'), origin,
++  docs = resolve(root, 'docs'), marketFetch = fetch,
++  moderatorIds = (process.env.DASHBOARD_MODERATOR_IDS ?? '').split(',').map(v => v.trim()).filter(Boolean) } = {}) {
++  if (origin && (new URL(origin).origin !== origin || !/^https?:/.test(origin))) throw new Error('APP_ORIGIN must be an exact http(s) origin without a trailing slash.');
++  if (database !== ':memory:') {
++    mkdirSync(dirname(database), { recursive: true, mode: 0o700 });
++    chmodSync(dirname(database), 0o700);
++  }
++  const db = new DatabaseSync(database);
++  if (database !== ':memory:') chmodSync(database, 0o600);
++  db.exec(`PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;
++    CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, name TEXT NOT NULL,
++      salt TEXT NOT NULL, password BLOB NOT NULL, created INTEGER NOT NULL);
++    CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires INTEGER NOT NULL);
++    CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
++      type TEXT NOT NULL, payload TEXT NOT NULL, created INTEGER NOT NULL);
++    CREATE INDEX IF NOT EXISTS items_owner ON items(user_id, type);
++    CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
++      room TEXT NOT NULL, body TEXT NOT NULL, created INTEGER NOT NULL);
++    CREATE INDEX IF NOT EXISTS messages_room ON messages(room, id);
++    CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY, message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
++      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, created INTEGER NOT NULL, UNIQUE(message_id, user_id));`);
++  const limits = new Map();
++  const secure = origin?.startsWith('https://') ?? false;
++  const cookieName = secure ? '__Host-b2mx_session' : 'b2mx_session';
++  let activeHashes = 0, priceCache = null, pricePromise = null;
++  const dummySalt = randomBytes(16).toString('hex');
++  function throttle(key, maximum, interval) {
++    const now = Date.now();
++    // Bound memory used by rate-limit bookkeeping; expirations are opportunistic.
++    if (limits.size > 10000) for (const [k, v] of limits) if (v.until <= now) limits.delete(k);
++    let bucket = limits.get(key);
++    if (!bucket || bucket.until <= now) { bucket = { count: 0, until: now + interval }; limits.set(key, bucket); }
++    if (++bucket.count > maximum) throw new ApiError(429, 'Too many requests. Please try again shortly.');
++  }
++  async function deriveBounded(password, salt) {
++    if (activeHashes >= 2) throw new ApiError(503, 'Account service is busy. Please try again.');
++    ++activeHashes;
++    try { return await passwordHash(password, salt); } finally { --activeHashes; }
++  }
++  const json = (response, status, payload) => {
++    response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
++    response.end(JSON.stringify(payload));
++  };
++  function cookie(response, token, clear = false) {
++    response.setHeader('Set-Cookie', `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${clear ? 0 : SESSION_AGE / 1000}${secure ? '; Secure' : ''}`);
++  }
++  function tokenFrom(request) {
++    const raw = (request.headers.cookie ?? '').split(';').map(v => v.trim()).find(v => v.startsWith(`${cookieName}=`));
++    const token = raw?.slice(cookieName.length + 1) ?? '';
++    return /^[a-f0-9]{64}$/.test(token) ? token : '';
++  }
++  function userFrom(request) {
++    const token = tokenFrom(request);
++    if (!token) throw new ApiError(401, 'Please sign in.');
++    const user = db.prepare('SELECT u.* FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?').get(hashToken(token), Date.now());
++    if (!user) throw new ApiError(401, 'Your session expired. Please sign in again.');
++    return user;
++  }
++  function publicUser(user) { return { id: user.id, name: user.name, email: user.email, moderator: moderatorIds.includes(user.id) }; }
++  function newSession(response, user) {
++    db.prepare('DELETE FROM sessions WHERE expires<=?').run(Date.now());
++    const token = randomBytes(32).toString('hex');
++    db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hashToken(token), user.id, Date.now() + SESSION_AGE);
++    cookie(response, token);
++  }
++  function allItems(user) {
++    const data = Object.fromEntries(types.map(type => [type, []]));
++    for (const row of db.prepare('SELECT id,type,payload,created FROM items WHERE user_id=? ORDER BY created DESC').all(user.id))
++      data[row.type].push({ id: row.id, ...JSON.parse(row.payload), created: row.created });
++    return data;
++  }
++  async function market() {
++    if (priceCache && Date.now() - priceCache.checked < 60000) return priceCache;
++    if (pricePromise) return pricePromise;
++    pricePromise = (async () => {
++      const quotes = {};
++      await Promise.all(['BTC', 'ETH'].map(async symbol => {
++        try {
++          const response = await marketFetch(`https://api.coinbase.com/v2/prices/${symbol}-USD/spot`, { signal: AbortSignal.timeout(5000) });
++          if (!response.ok) return;
++          const data = await response.json();
++          const value = Number(data.data?.amount);
++          if (data.data?.currency === 'USD' && Number.isFinite(value) && value > 0)
++            quotes[symbol] = { price: value, source: 'Coinbase spot', at: Date.now() };
++        } catch { /* Missing prices stay missing; never invent a market quote. */ }
++      }));
++      priceCache = { quotes, checked: Date.now() };
++      return priceCache;
++    })().finally(() => { pricePromise = null; });
++    return pricePromise;
++  }
++  const server = http.createServer(async (request, response) => {
++    response.setHeader('X-Content-Type-Options', 'nosniff');
++    response.setHeader('Referrer-Policy', 'same-origin');
++    response.setHeader('X-Frame-Options', 'DENY');
++    try {
++      const url = new URL(request.url, 'http://localhost');
++      if (url.pathname.startsWith('/api/account/')) {
++        throttle(`api:${request.socket.remoteAddress}`, 300, 60000);
++        if (!['GET', 'HEAD'].includes(request.method)) {
++          const expected = origin ?? `http://${request.headers.host}`;
++          if (request.headers.origin !== expected || request.headers['x-b2mx-request'] !== 'dashboard')
++            throw new ApiError(403, 'Request origin is not allowed.');
++        }
++        const path = url.pathname.slice('/api/account/'.length);
++        if (path === 'health' && request.method === 'GET') return json(response, 200, { ready: true, rooms, emailVerification: false });
++        if (['register', 'login'].includes(path) && request.method === 'POST') {
++          throttle(`auth:${request.socket.remoteAddress}`, 12, 15 * 60000);
++          const input = await body(request);
++          const email = text(input.email, 'Email', 254).toLowerCase();
++          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, 'Enter a valid email address.');
++          const password = passwordInput(input.password);
++          let user;
++          if (path === 'register') {
++            const name = text(input.name, 'Display name', 40);
++            const salt = randomBytes(16).toString('hex');
++            const derived = await deriveBounded(password, salt);
++            user = { id: randomUUID(), email, name, salt, password: derived, created: Date.now() };
++            try { db.prepare('INSERT INTO users VALUES(?,?,?,?,?,?)').run(user.id, email, name, salt, derived, user.created); }
++            catch (error) {
++              if (error.code === 'ERR_SQLITE_ERROR' && db.prepare('SELECT id FROM users WHERE email=?').get(email))
++                throw new ApiError(409, 'Unable to create this account. Try signing in.');
++              throw error;
++            }
++          } else {
++            user = db.prepare('SELECT * FROM users WHERE email=?').get(email);
++            const derived = await deriveBounded(password, user?.salt ?? dummySalt);
++            if (!user || !timingSafeEqual(derived, Buffer.from(user.password))) throw new ApiError(401, 'Email or password is incorrect.');
++          }
++          newSession(response, user);
++          return json(response, path === 'register' ? 201 : 200, { user: publicUser(user) });
++        }
++        const user = userFrom(request);
++        if (path === 'me' && request.method === 'GET') return json(response, 200, { user: publicUser(user) });
++        if (path === 'logout' && request.method === 'POST') {
++          db.prepare('DELETE FROM sessions WHERE token=?').run(hashToken(tokenFrom(request)));
++          cookie(response, '', true); return json(response, 200, { ok: true });
++        }
++        if (path === 'password' && request.method === 'POST') {
++          throttle(`password:${user.id}`, 5, 15 * 60000);
++          const input = await body(request);
++          const current = await deriveBounded(passwordInput(input.currentPassword), user.salt);
++          if (!timingSafeEqual(current, Buffer.from(user.password))) throw new ApiError(401, 'Current password is incorrect.');
++          const salt = randomBytes(16).toString('hex');
++          const derived = await deriveBounded(passwordInput(input.newPassword), salt);
++          db.prepare('UPDATE users SET salt=?,password=? WHERE id=?').run(salt, derived, user.id);
++          db.prepare('DELETE FROM sessions WHERE user_id=?').run(user.id);
++          newSession(response, user); return json(response, 200, { ok: true });
++        }
++        if (path === 'items' && request.method === 'GET') return json(response, 200, allItems(user));
++        if (path === 'items' && request.method === 'POST') {
++          const input = await body(request);
++          const type = choice(input.type, types, 'item type');
++          if (db.prepare('SELECT COUNT(*) AS count FROM items WHERE user_id=?').get(user.id).count >= 1000)
++            throw new ApiError(400, 'Your account has reached its 1,000-item limit.');
++          const payload = itemPayload(type, input.item);
++          const id = randomUUID(), created = Date.now();
++          db.prepare('INSERT INTO items VALUES(?,?,?,?,?)').run(id, user.id, type, JSON.stringify(payload), created);
++          return json(response, 201, { id, ...payload, created });
++        }
++        const itemMatch = /^items\/([a-f0-9-]{36})$/.exec(path);
++        if (itemMatch && ['PUT', 'DELETE'].includes(request.method)) {
++          const row = db.prepare('SELECT * FROM items WHERE id=? AND user_id=?').get(itemMatch[1], user.id);
++          if (!row) throw new ApiError(404, 'Item not found.');
++          if (request.method === 'DELETE') db.prepare('DELETE FROM items WHERE id=? AND user_id=?').run(row.id, user.id);
++          else {
++            const input = await body(request), payload = itemPayload(row.type, input.item);
++            db.prepare('UPDATE items SET payload=? WHERE id=? AND user_id=?').run(JSON.stringify(payload), row.id, user.id);
++          }
++          return json(response, 200, { ok: true });
++        }
++        if (path === 'export' && request.method === 'GET')
++          return json(response, 200, { version: 1, exportedAt: new Date().toISOString(), user: publicUser(user), data: allItems(user) });
++        if (path === 'market' && request.method === 'GET') return json(response, 200, await market());
++        if (path === 'chat' && request.method === 'GET') {
++          const room = choice(url.searchParams.get('room') ?? 'lounge', rooms, 'room');
++          const messages = db.prepare(`SELECT m.id,m.room,m.body,m.created,u.id AS authorId,u.name AS author
++            FROM messages m JOIN users u ON u.id=m.user_id WHERE m.room=? ORDER BY m.id DESC LIMIT 100`).all(room).reverse();
++          return json(response, 200, { room, messages });
++        }
++        if (path === 'chat' && request.method === 'POST') {
++          throttle(`chat:${user.id}`, 1, 3000);
++          const input = await body(request);
++          const room = choice(input.room, rooms, 'room'), message = text(input.body, 'Message', 1000);
++          const created = Date.now();
++          const result = db.prepare('INSERT INTO messages(user_id,room,body,created) VALUES(?,?,?,?)').run(user.id, room, message, created);
++          return json(response, 201, { id: Number(result.lastInsertRowid), room, body: message, created, author: user.name, authorId: user.id });
++        }
++        const messageMatch = /^chat\/(\d+)(\/report)?$/.exec(path);
++        if (messageMatch) {
++          const row = db.prepare('SELECT * FROM messages WHERE id=?').get(messageMatch[1]);
++          if (!row) throw new ApiError(404, 'Message not found.');
++          if (messageMatch[2] && request.method === 'POST') {
++            throttle(`reports:${user.id}`, 20, 60000);
++            db.prepare('INSERT OR IGNORE INTO reports(message_id,user_id,created) VALUES(?,?,?)').run(row.id, user.id, Date.now());
++            return json(response, 200, { ok: true });
++          }
++          if (!messageMatch[2] && request.method === 'DELETE') {
++            if (row.user_id !== user.id && !moderatorIds.includes(user.id)) throw new ApiError(403, 'You can only delete your own messages.');
++            db.prepare('DELETE FROM messages WHERE id=?').run(row.id); return json(response, 200, { ok: true });
++          }
++        }
++        if (path === 'reports' && request.method === 'GET') {
++          if (!moderatorIds.includes(user.id)) throw new ApiError(403, 'Moderator access required.');
++          return json(response, 200, { reports: db.prepare(`SELECT m.id,m.room,m.body,u.name AS author,COUNT(r.id) AS count
++            FROM reports r JOIN messages m ON m.id=r.message_id JOIN users u ON u.id=m.user_id
++            GROUP BY m.id ORDER BY count DESC LIMIT 100`).all() });
++        }
++        throw new ApiError(404, 'Account endpoint not found.');
++      }
++      if (!['GET', 'HEAD'].includes(request.method)) throw new ApiError(405, 'Method not allowed.');
++      // Only files beneath docs are public. DB, server code and dotfiles are never served.
++      const decoded = decodeURIComponent(url.pathname);
++      if (decoded.split('/').some(v => v.startsWith('.')) || decoded.includes('\\')) throw new ApiError(404, 'Not found.');
++      const base = realpathSync(docs);
++      const requested = resolve(base, `.${decoded === '/' ? '/index.html' : decoded}`);
++      if (!requested.startsWith(base + sep)) throw new ApiError(404, 'Not found.');
++      let file;
++      try { file = realpathSync(requested); } catch { throw new ApiError(404, 'Not found.'); }
++      if (!file.startsWith(base + sep)) throw new ApiError(404, 'Not found.');
++      const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json' }[extname(file).toLowerCase()] ?? 'application/octet-stream';
++      if (file.endsWith('dashboard.html')) response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
++      response.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-cache' });
++      response.end(request.method === 'HEAD' ? undefined : readFileSync(file));
++    } catch (error) {
++      if (!response.headersSent) json(response, error.status ?? 500, { error: error.status ? error.message : 'Server error. Please try again.' });
++      else response.end();
++      if (!error.status) console.error('Dashboard request failed:', error.message);
++    }
++  });
++  server.on('close', () => db.close());
++  return server;
++}
++
++if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
++  const port = Number(process.env.PORT ?? 3000);
++  const origin = process.env.APP_ORIGIN ?? `http://localhost:${port}`;
++  if (process.env.NODE_ENV === 'production' && !origin.startsWith('https://')) throw new Error('Production requires an HTTPS APP_ORIGIN.');
++  const app = createApp({ origin, database: process.env.DASHBOARD_DATABASE });
++  app.listen(port, process.env.HOST ?? '127.0.0.1', () => console.log(`Bitcoin2Max dashboard: ${origin}/dashboard.html`));
++  const shutdown = () => app.close(() => process.exit(0));
++  process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
++}
+diff --git a/dashboard-server/server.test.mjs b/dashboard-server/server.test.mjs
+new file mode 100644
+index 0000000..815c7ca
+--- /dev/null
++++ b/dashboard-server/server.test.mjs
+@@ -0,0 +1,123 @@
++import { test, before, after } from 'node:test';
++import assert from 'node:assert/strict';
++import { mkdtempSync, rmSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { createApp } from './server.mjs';
++
++const directory = mkdtempSync(join(tmpdir(), 'b2mx-dashboard-test-'));
++const database = join(directory, 'accounts.sqlite');
++const fakeMarket = async url => ({ ok: true, json: async () => ({ data: { currency: 'USD', amount: url.includes('BTC') ? '60000' : '3000' } }) });
++let server, origin, alice, bob;
++const password = 'Correct-horse-orbit-42';
++const moderatorIds = [];
++async function start() {
++  server = createApp({ database, marketFetch: fakeMarket, moderatorIds });
++  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
++  origin = `http://127.0.0.1:${server.address().port}`;
++}
++async function stop() { await new Promise(resolve => server.close(resolve)); }
++async function request(path, { method = 'GET', value, cookie, extraHeaders = {} } = {}) {
++  const result = await fetch(`${origin}/api/account/${path}`, {
++    method, headers: { Origin: origin, 'Content-Type': 'application/json', 'X-B2MX-Request': 'dashboard',
++      ...(cookie ? { Cookie: cookie } : {}), ...extraHeaders }, body: value == null ? undefined : JSON.stringify(value)
++  });
++  return { status: result.status, body: await result.json(), cookie: result.headers.get('set-cookie')?.split(';')[0], headers: result.headers };
++}
++before(async () => {
++  await start();
++  const a = await request('register', { method: 'POST', value: { name: 'Alice', email: 'alice@example.com', password } });
++  assert.equal(a.status, 201); alice = a.cookie;
++  moderatorIds.push(a.body.user.id);
++  assert.match(a.headers.get('set-cookie'), /HttpOnly/); assert.match(a.headers.get('set-cookie'), /SameSite=Strict/);
++  const b = await request('register', { method: 'POST', value: { name: 'Bob', email: 'bob@example.com', password } });
++  assert.equal(b.status, 201); bob = b.cookie;
++});
++after(async () => { await stop(); rmSync(directory, { recursive: true, force: true }); });
++
++test('Sessions protect every private collection and do not expose hashes', async () => {
++  assert.equal((await request('items')).status, 401);
++  const me = await request('me', { cookie: alice }); assert.equal(me.status, 200);
++  assert.equal(me.body.user.name, 'Alice'); assert.equal(me.body.user.moderator, true);
++  assert.equal(me.body.user.password, undefined); assert.equal(me.body.user.salt, undefined);
++  assert.equal((await request('me', { cookie: 'b2mx_session=not-a-session' })).status, 401);
++});
++test('Mutations require both a same-origin request and the request header', async () => {
++  assert.equal((await request('items', { method: 'POST', cookie: alice, value: {}, extraHeaders: { Origin: 'https://evil.example' } })).status, 403);
++  assert.equal((await request('items', { method: 'POST', cookie: alice, value: {}, extraHeaders: { 'X-B2MX-Request': '' } })).status, 403);
++});
++test('Accounts can save, edit, export and delete only their own records', async () => {
++  const saved = await request('items', { method: 'POST', cookie: alice, value: {
++    type: 'addresses', item: { label: 'My ETH', network: 'ETH', value: '0x' + 'a'.repeat(40), note: 'Personal bookmark' }
++  } });
++  assert.equal(saved.status, 201);
++  assert.equal((await request('items', { cookie: bob })).body.addresses.length, 0);
++  assert.equal((await request(`items/${saved.body.id}`, { method: 'DELETE', cookie: bob })).status, 404);
++  assert.equal((await request(`items/${saved.body.id}`, { method: 'PUT', cookie: bob, value: { item: {} } })).status, 404);
++  const edited = await request(`items/${saved.body.id}`, { method: 'PUT', cookie: alice, value: { item: { ...saved.body, label: 'Updated ETH' } } });
++  assert.equal(edited.status, 200);
++  const exported = await request('export', { cookie: alice });
++  assert.equal(exported.body.data.addresses[0].label, 'Updated ETH');
++  assert.equal(exported.body.user.password, undefined);
++  assert.equal((await request(`items/${saved.body.id}`, { method: 'DELETE', cookie: alice })).status, 200);
++});
++test('All six workspace features persist and reject malformed asset data', async () => {
++  const fixtures = {
++    holdings: { symbol: 'BTC', quantity: '0.25', averageCost: '40000', manualPrice: '' },
++    transactions: { label: 'A transaction', network: 'BTC', value: 'b'.repeat(64), note: '' },
++    watchlist: { symbol: 'ETH', target: '3500', direction: 'above' },
++    goals: { label: 'My first milestone', target: '25000' },
++    notes: { label: '<script>research</script>', body: 'Notes stay text, even <img src=x onerror=alert(1)>' }
++  };
++  for (const [type, item] of Object.entries(fixtures))
++    assert.equal((await request('items', { method: 'POST', cookie: bob, value: { type, item } })).status, 201);
++  const rows = (await request('items', { cookie: bob })).body;
++  assert.equal(rows.holdings[0].quantity, '0.25'); assert.equal(rows.holdings[0].manualPrice, null);
++  assert.equal(rows.notes[0].label, '<script>research</script>');
++  assert.equal((await request('items', { method: 'POST', cookie: bob, value: { type: 'holdings', item: { symbol: 'BTC', quantity: '-1', averageCost: '0' } } })).status, 400);
++  assert.equal((await request('items', { method: 'POST', cookie: bob, value: { type: 'transactions', item: { label: 'bad', network: 'ETH', value: 'x', note: '' } } })).status, 400);
++});
++test('Chat rooms, spam limits, reporting and moderator ownership rules work', async () => {
++  assert.equal((await request('chat?room=lounge')).status, 401);
++  const sent = await request('chat', { method: 'POST', cookie: bob, value: { room: 'builders', body: 'Hello, builders! <script>not HTML</script>' } });
++  assert.equal(sent.status, 201); assert.equal(sent.body.author, 'Bob');
++  assert.equal((await request('chat?room=lounge', { cookie: alice })).body.messages.length, 0);
++  const room = (await request('chat?room=builders', { cookie: alice })).body;
++  assert.equal(room.messages[0].body, sent.body.body); assert.equal(room.messages[0].email, undefined);
++  assert.equal((await request('chat', { method: 'POST', cookie: bob, value: { room: 'builders', body: 'Too soon' } })).status, 429);
++  assert.equal((await request(`chat/${sent.body.id}/report`, { method: 'POST', cookie: alice, value: {} })).status, 200);
++  assert.equal((await request('reports', { cookie: bob })).status, 403);
++  assert.equal((await request('reports', { cookie: alice })).body.reports.length, 1);
++  assert.equal((await request(`chat/${sent.body.id}`, { method: 'DELETE', cookie: alice })).status, 200);
++  const aliceMessage = await request('chat', { method: 'POST', cookie: alice, value: { room: 'lounge', body: 'A moderator message' } });
++  assert.equal(aliceMessage.status, 201);
++  assert.equal((await request(`chat/${aliceMessage.body.id}`, { method: 'DELETE', cookie: bob })).status, 403);
++  assert.equal((await request(`chat/${aliceMessage.body.id}`, { method: 'DELETE', cookie: alice })).status, 200);
++});
++test('Market returns only valid upstream quotes and never invents a B2MX price', async () => {
++  const market = await request('market', { cookie: alice });
++  assert.equal(market.body.quotes.BTC.price, 60000); assert.equal(market.body.quotes.ETH.price, 3000);
++  assert.equal(market.body.quotes.B2MX, undefined);
++});
++test('Passwords change with current-password proof and revoke other sessions', async () => {
++  const second = await request('login', { method: 'POST', value: { email: 'bob@example.com', password } });
++  assert.equal(second.status, 200);
++  assert.equal((await request('password', { method: 'POST', cookie: bob, value: { currentPassword: 'wrong-password-42', newPassword: 'Different-strong-password-42' } })).status, 401);
++  const changed = await request('password', { method: 'POST', cookie: bob, value: { currentPassword: password, newPassword: 'Different-strong-password-42' } });
++  assert.equal(changed.status, 200); assert.equal((await request('me', { cookie: second.cookie })).status, 401);
++  assert.equal((await request('me', { cookie: bob })).status, 401); bob = changed.cookie;
++  assert.equal((await request('login', { method: 'POST', value: { email: 'bob@example.com', password } })).status, 401);
++});
++test('Data and sessions survive a service restart', async () => {
++  await stop(); await start();
++  const saved = await request('items', { cookie: bob }); assert.equal(saved.status, 200); assert.equal(saved.body.holdings.length, 1);
++});
++test('Private database and code cannot be served; logout invalidates session', async () => {
++  for (const path of ['/data/dashboard/accounts.sqlite', '/dashboard-server/server.mjs', '/.git/config']) {
++    const result = await fetch(origin + path); assert.equal(result.status, 404);
++  }
++  const page = await fetch(origin + '/dashboard.html'); assert.equal(page.status, 200);
++  assert.match(page.headers.get('content-security-policy'), /script-src 'self'/);
++  assert.equal((await request('logout', { method: 'POST', cookie: bob, value: {} })).status, 200);
++  assert.equal((await request('me', { cookie: bob })).status, 401);
++});
+diff --git a/docs/dashboard.css b/docs/dashboard.css
+new file mode 100644
+index 0000000..cba99da
+--- /dev/null
++++ b/docs/dashboard.css
+@@ -0,0 +1,4 @@
++:root{color-scheme:dark;--bg:#090d17;--panel:#111725;--panel2:#161f30;--text:#eef3ff;--muted:#8f9db5;--line:#243047;--cyan:#57e5ce;--purple:#ac9aff;--orange:#ffb769;--negative:#ff8797;--sidebar:#0c111d;--shadow:0 18px 65px #0003}
++*{box-sizing:border-box}body{margin:0;font-family:Inter,"Segoe UI",system-ui,sans-serif;color:var(--text);background:var(--bg);font-size:14px;line-height:1.5}button,input,select,textarea{font:inherit}button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}button{cursor:pointer}a{color:inherit;text-decoration:none}[hidden]{display:none!important}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:4px}.skip{position:fixed;left:20px;top:-80px;z-index:100;padding:12px;background:var(--panel)}.skip:focus{top:12px}.muted{color:var(--muted)}.eyebrow{font-size:10px;font-weight:700;letter-spacing:2.2px;color:var(--cyan)}.brand{display:flex;align-items:center;gap:12px;white-space:nowrap}.brand-mark{display:grid;place-items:center;width:41px;height:43px;font-size:26px;font-weight:800;color:var(--cyan);background:linear-gradient(130deg,#57e5ce20,#ac9aff10);border:1px solid #57e5ce40;border-radius:13px;transform:rotate(-5deg)}.brand>span:last-child{font-size:16px;letter-spacing:-.5px}.brand strong{color:var(--cyan)}.brand small{display:block;color:var(--muted);letter-spacing:1.5px;font-size:8px;margin-top:2px}.pulse{display:inline-block;width:7px;height:7px;background:var(--cyan);border-radius:50%;box-shadow:0 0 12px #57e5ce66;margin-right:8px}.button{display:inline-flex;align-items:center;justify-content:center;gap:14px;border:0;border-radius:11px;padding:12px 18px;font-weight:650;font-size:12px;transition:transform .15s,filter .15s}.button:hover{filter:brightness(1.08);transform:translateY(-1px)}.button:disabled{opacity:.45;cursor:wait;transform:none}.primary{background:var(--cyan);color:#072921;box-shadow:0 5px 22px #57e5ce14}.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}.full{width:100%}.text-button{background:none;border:0;color:var(--muted);font-size:12px;padding:8px}.text-button:hover{color:var(--cyan)}.icon-button{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:10px;font-size:17px}.auth-screen{display:grid;grid-template-columns:1.15fr 1fr;min-height:100vh}.auth-story{padding:44px 9%;background:radial-gradient(ellipse at 45% 55%,#16364644,transparent 65%),var(--bg);position:relative;overflow:hidden}.auth-story .brand{margin-bottom:68px}.auth-eyebrow{color:var(--muted);font-size:9px;letter-spacing:1.7px}.auth-story h1{font-size:clamp(40px,4.2vw,65px);line-height:1.12;letter-spacing:-3px;margin:22px 0;font-weight:600}.auth-story h1 em{font-style:normal;background:linear-gradient(90deg,var(--cyan),var(--purple));background-clip:text;color:transparent}.auth-story p{max-width:375px;color:var(--muted);line-height:1.9;font-size:13px}.orbit-art{position:relative;height:210px;max-width:390px;margin:26px 0}.orbit{position:absolute;inset:15px 50px;border:1px solid #57e5ce30;border-radius:50%;transform:rotate(-25deg)}.orbit-two{inset:45px 15px;transform:rotate(24deg);border-color:#ac9aff25}.planet{position:absolute;inset:55px 130px;display:grid;place-items:center;font-size:50px;border:1px solid #57e5ce40;border-radius:50%;background:radial-gradient(circle at 30% 30%,#254c54,#0d1727);box-shadow:0 0 55px #57e5ce12;color:var(--cyan)}.planet span{position:absolute;font-size:17px;color:var(--purple);bottom:5px;right:9px}.orbit-chip{position:absolute;font-size:8px;letter-spacing:1.5px;color:var(--muted);padding:8px 12px;border:1px solid var(--line);border-radius:7px;background:var(--panel)}.chip-one{top:30px;right:15px}.chip-two{bottom:12px;left:7px}.chip-three{bottom:5px;right:7px}.auth-features{display:flex;flex-wrap:wrap;gap:20px;font-size:10px;color:var(--muted)}.back-link{display:inline-block;margin-top:34px;color:var(--muted);font-size:11px}.auth-side{display:flex;justify-content:center;align-items:center;flex-direction:column;border-left:1px solid var(--line);padding:40px;background:radial-gradient(ellipse at 60% 5%,#ac9aff0a,transparent 60%)}.auth-card{width:100%;max-width:380px}.auth-card h2{font-size:30px;font-weight:600;letter-spacing:-1px;margin:14px 0 6px}.auth-card>p{font-size:12px}.auth-tabs{display:flex;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:27px 0}.auth-tabs button{width:50%;border:0;padding:10px;color:var(--muted);background:none;border-radius:7px;font-size:12px}.auth-tabs .active{background:var(--panel2);color:var(--text)}label{display:block;color:var(--muted);font-size:11px;font-weight:550;margin:17px 0}input,select,textarea{display:block;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text);margin-top:8px;font-size:12px}input::placeholder,textarea::placeholder{color:#697990}textarea{resize:vertical;min-height:90px}.error{color:var(--negative);font-size:12px;min-height:0}.error:empty{display:none}.form-help{font-size:10px;color:var(--muted);line-height:1.7}.auth-foot{font-size:10px;text-align:center;color:var(--muted);padding:24px 16px 10px;border-bottom:1px solid var(--line);margin-top:16px}.service-status{text-align:center;font-size:10px;color:var(--muted)}.auth-credit{font-size:8px;letter-spacing:2px;color:var(--muted);margin-top:60px}.app{display:flex;min-height:100vh}.sidebar{width:238px;background:var(--sidebar);border-right:1px solid var(--line);position:fixed;inset:0 auto 0 0;z-index:20;display:flex;flex-direction:column;padding:28px 18px;overflow-y:auto}.sidebar .brand{margin:0 6px 38px}.sidebar-label{font-size:8px;letter-spacing:1.8px;color:var(--muted);padding:14px 12px 9px}.nav-item{width:100%;display:flex;align-items:center;gap:13px;text-align:left;background:none;border:0;border-radius:9px;padding:12px;color:var(--muted);font-size:12px;margin:2px 0}.nav-item>span{font-size:18px;width:20px}.nav-item.active{background:linear-gradient(90deg,#57e5ce18,#57e5ce07);color:var(--cyan);box-shadow:inset 2px 0 var(--cyan)}.nav-item:hover{color:var(--text);background:var(--panel)}.nav-item i{font-size:8px;font-style:normal;color:var(--purple);margin-left:auto}.sidebar-bottom{margin-top:auto;padding-top:32px}.network-mini{padding:15px 12px;border:1px solid var(--line);border-radius:10px;font-size:9px;letter-spacing:.8px;color:var(--text)}.network-mini>span:last-child{display:block;color:var(--muted);font-size:9px;margin:7px 0 0 15px;letter-spacing:0}.sidebar-bottom>a{font-size:10px;margin-top:12px}.workspace{margin-left:238px;width:calc(100% - 238px)}.topbar{height:74px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 34px;gap:16px}.breadcrumbs{font-size:9px;letter-spacing:1.5px;color:var(--muted)}.breadcrumbs span{padding:0 14px;color:var(--line)}.breadcrumbs strong{font-size:11px;letter-spacing:0;color:var(--text);font-weight:500}.top-actions{display:flex;align-items:center;gap:12px}.avatar{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(130deg,#ac9aff35,#57e5ce20);border:1px solid #ac9aff40;color:var(--purple);font-weight:700}.mobile-only{display:none}main{padding:32px 34px 48px;max-width:1450px;margin:auto;min-height:calc(100vh - 132px)}.page-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:24px}.page-heading h1{font-size:28px;font-weight:550;letter-spacing:-1px;margin:7px 0}.page-heading p{font-size:11px;margin:0}.market-strip{display:flex;align-items:center;gap:26px;border:1px solid var(--line);background:var(--panel);border-radius:11px;padding:12px 18px;margin-bottom:24px;font-size:10px;flex-wrap:wrap}.market-strip b{font-weight:650;color:var(--text);margin-right:7px}.market-strip .quote{color:var(--muted)}.market-strip .market-note{margin-left:auto;color:var(--muted);font-size:9px}.coin{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:10px;margin-right:11px;font-size:18px;font-weight:650;vertical-align:middle}.coin.BTC{background:#ffb76918;color:var(--orange)}.coin.ETH{background:#ac9aff18;color:var(--purple)}.coin.B2MX{background:#57e5ce18;color:var(--cyan)}.grid-overview{display:grid;grid-template-columns:1.6fr 1fr;gap:20px}.card{border:1px solid var(--line);background:var(--panel);border-radius:15px;padding:24px;box-shadow:var(--shadow)}.balance-card{background:radial-gradient(ellipse at 100% 0%,#57e5ce13,transparent 60%),var(--panel);position:relative;overflow:hidden;min-height:258px}.card-label{font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}.big-value{font-size:44px;font-weight:550;letter-spacing:-2px;margin:17px 0 10px;line-height:1.2}.value-foot{font-size:10px;color:var(--muted)}.positive{color:var(--cyan)!important}.negative{color:var(--negative)!important}.balance-metrics{display:flex;gap:40px;padding-top:28px;margin-top:22px;border-top:1px solid var(--line)}.balance-metrics b{display:block;font-size:17px;font-weight:500;margin-top:7px}.balance-metrics small{font-size:9px;color:var(--muted)}.card-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.card-heading h2{font-size:14px;font-weight:600;margin:0;letter-spacing:-.2px}.card-heading a,.card-heading button{font-size:10px;color:var(--cyan);background:none;border:0;padding:0}.allocation-wrap{display:flex;align-items:center;gap:25px}.allocation-ring{width:118px;height:118px;flex-shrink:0;border-radius:50%;background:var(--line);display:grid;place-items:center;position:relative}.allocation-ring::before{content:"";position:absolute;inset:13px;background:var(--panel);border-radius:50%}.allocation-ring span{position:relative;z-index:1;font-size:10px;color:var(--muted);text-align:center}.allocation-ring strong{display:block;font-size:22px;color:var(--text)}.allocation-legend{flex:1}.legend-line{display:flex;justify-content:space-between;gap:18px;font-size:10px;margin:12px 0;color:var(--muted)}.dot{width:6px;height:6px;display:inline-block;border-radius:50%;margin-right:7px}.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}.stat-card{padding:18px 21px;display:flex;align-items:center;gap:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.stat-icon{font-size:21px;color:var(--purple);display:grid;place-items:center;background:#ac9aff10;border-radius:10px;width:40px;height:40px}.stat-card b{display:block;font-size:22px;font-weight:550}.stat-card small{font-size:9px;color:var(--muted)}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:11px}th{text-align:left;font-size:8px;letter-spacing:1px;color:var(--muted);font-weight:500;padding:0 12px 15px;border-bottom:1px solid var(--line);white-space:nowrap}td{padding:17px 12px;border-bottom:1px solid var(--line);white-space:nowrap}tr:last-child td{border:0}td small{display:block;color:var(--muted);font-size:9px;margin-top:2px}.asset-name{display:inline-block;vertical-align:middle;font-weight:600}.row-actions{display:flex;justify-content:flex-end;gap:3px}.row-actions button,.small-action{border:0;background:none;color:var(--muted);font-size:10px;padding:5px 8px}.row-actions button:hover,.small-action:hover{color:var(--cyan)}.empty{padding:46px 16px;text-align:center;color:var(--muted);font-size:12px}.empty strong{display:block;color:var(--text);font-weight:500;font-size:15px;margin-bottom:8px}.empty span{display:block;margin:auto;max-width:300px;font-size:11px}.empty-icon{font-size:28px;color:var(--cyan);margin-bottom:13px}.toolbar{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:20px}.toolbar input{max-width:300px;margin:0}.toolbar small{font-size:10px;color:var(--muted)}.item-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.item-card{padding:23px}.item-card h3{font-size:14px;margin:0 0 12px;font-weight:550}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10px;overflow-wrap:anywhere;white-space:normal;color:var(--muted)}.item-card p{font-size:11px;color:var(--muted);white-space:pre-wrap}.item-card .row-actions{justify-content:flex-start;margin-top:15px;padding-top:12px;border-top:1px solid var(--line)}.badge{font-size:8px;letter-spacing:.7px;padding:4px 7px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--muted)}.item-title{display:flex;justify-content:space-between;gap:12px;align-items:baseline}.progress-track{height:5px;border-radius:8px;background:var(--line);overflow:hidden;margin:18px 0 12px}.progress-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--purple));border-radius:8px}.community-banner{margin-top:20px;padding:22px;background:linear-gradient(110deg,#ac9aff12,#57e5ce08);display:flex;align-items:center;justify-content:space-between;gap:24px}.community-banner h2{font-size:17px;font-weight:550;letter-spacing:-.4px;margin:0 0 5px}.community-banner p{font-size:11px;color:var(--muted);margin:0}.chat-shell{display:grid;grid-template-columns:172px 1fr;border:1px solid var(--line);background:var(--panel);border-radius:15px;overflow:hidden;min-height:530px}.rooms{border-right:1px solid var(--line);padding:22px 12px;background:var(--sidebar)}.rooms .sidebar-label{padding:0 8px 15px}.room-button{width:100%;padding:11px;text-align:left;background:none;border:0;border-radius:8px;color:var(--muted);font-size:12px;margin:3px 0}.room-button.active{background:#ac9aff15;color:var(--purple)}.room-rules{font-size:10px;color:var(--muted);padding:20px 8px;line-height:1.9}.chat-main{display:flex;flex-direction:column;min-width:0}.chat-header{padding:17px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center}.chat-header h2{font-size:14px;margin:0}.chat-header span{font-size:9px;color:var(--muted)}.messages{padding:22px 24px;overflow-y:auto;height:350px;min-height:220px;overscroll-behavior:contain}.message{display:flex;gap:12px;margin-bottom:24px}.message>.avatar{flex-shrink:0;width:30px;height:30px;font-size:11px}.message-content{min-width:0;flex:1}.message-meta{display:flex;align-items:center;gap:12px;font-size:10px}.message-meta b{font-weight:550}.message-meta time{color:var(--muted);font-size:8px}.message p{font-size:12px;margin:5px 0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted)}.message-action{margin-left:auto;border:0;background:none;font-size:8px;color:var(--muted)}.composer{margin-top:auto;padding:16px 24px;border-top:1px solid var(--line)}.composer-box{display:flex;align-items:end;gap:10px}.composer textarea{resize:none;min-height:47px;height:47px;margin:0;font-size:11px}.composer .button{height:47px;flex-shrink:0}.composer small{display:block;font-size:8px;color:var(--muted);margin-top:9px}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.settings-grid h2{font-size:16px;margin:0 0 8px}.settings-grid p{font-size:11px;color:var(--muted)}.settings-grid .button{margin-top:12px}.settings-profile{padding:16px;border:1px solid var(--line);border-radius:10px;margin:20px 0;font-size:12px}.settings-profile span{display:block;color:var(--muted);margin-top:4px;font-size:11px}.workspace-footer{border-top:1px solid var(--line);display:flex;justify-content:space-between;padding:20px 34px;color:var(--muted);font-size:8px;letter-spacing:.5px}dialog{color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:17px;box-shadow:0 30px 100px #0008;width:470px;max-width:calc(100vw - 30px);max-height:90vh;padding:28px}dialog::backdrop{background:#03060dc9;backdrop-filter:blur(8px)}.dialog-top{display:flex;justify-content:space-between;align-items:start;gap:16px}.dialog-top h2{font-size:24px;font-weight:550;letter-spacing:-.5px;margin:6px 0}.dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:27px}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;border:1px solid #57e5ce50;background:var(--panel);border-radius:10px;box-shadow:var(--shadow);font-size:12px;z-index:99;max-width:90vw}.privacy .sensitive{filter:blur(9px);user-select:none}.light{color-scheme:light;--bg:#f3f5fa;--panel:#fff;--panel2:#edf1f7;--text:#15223a;--muted:#64738b;--line:#dee5ef;--cyan:#087f6d;--purple:#7055cf;--orange:#b15c0b;--negative:#bc334e;--sidebar:#fbfcff;--shadow:0 8px 35px #14223c05}
++@media(min-width:1500px){.auth-story{padding-left:15%;padding-right:12%}.auth-story .brand{margin-bottom:80px}}@media(max-width:1100px){.sidebar{width:210px;padding:24px 12px}.workspace{margin-left:210px;width:calc(100% - 210px)}main{padding:26px 24px}.topbar{padding:0 24px}.grid-overview{grid-template-columns:1.3fr 1fr}.allocation-wrap{gap:14px}.allocation-ring{width:96px;height:96px}.big-value{font-size:37px}.card{padding:20px}.page-heading h1{font-size:24px}.auth-story{padding:35px 7%}.planet{inset:55px 105px}}@media(max-width:850px){.sidebar{transform:translateX(-100%);width:238px;transition:transform .2s;box-shadow:20px 0 70px #0008}.sidebar.open{transform:translateX(0)}.workspace{margin-left:0;width:100%}.mobile-only{display:grid}.breadcrumbs{margin-right:auto}.grid-overview{grid-template-columns:1.4fr 1fr}.auth-screen{grid-template-columns:1fr 1fr}.auth-story h1{font-size:43px}.auth-story .brand{margin-bottom:45px}.auth-side{padding:30px 25px}.orbit-art{height:185px}.planet{inset:45px 85px}.auth-features{gap:12px;font-size:9px}}@media(max-width:600px){.auth-screen{display:flex;flex-direction:column}.auth-story{padding:28px 25px}.auth-story .brand{margin-bottom:26px}.auth-story h1{font-size:37px;letter-spacing:-1.8px}.auth-story p{font-size:12px;max-width:100%}.orbit-art,.auth-features,.back-link{display:none}.auth-side{border:0;border-top:1px solid var(--line);padding:32px 25px}.auth-card{max-width:none}.auth-credit{margin-top:25px}.topbar{padding:0 16px;height:63px;gap:10px}.breadcrumbs{font-size:8px;letter-spacing:.7px}.breadcrumbs span{padding:0 6px}.top-actions{gap:6px}.top-actions>.avatar{display:none}.top-actions .text-button{font-size:9px;padding:4px}.top-actions .icon-button{width:29px;height:29px}.page-heading{align-items:start}.page-heading h1{font-size:23px;line-height:1.25}.page-heading p{font-size:10px}.page-heading>.button{font-size:10px;padding:10px;white-space:nowrap;margin-top:20px}.page-heading .eyebrow{font-size:8px;letter-spacing:1.4px}main{padding:25px 16px 35px}.market-strip{gap:13px;padding:11px;font-size:9px}.market-note{width:100%;margin:0!important}.grid-overview,.settings-grid{grid-template-columns:1fr}.allocation-wrap{justify-content:center;gap:28px}.allocation-legend{max-width:170px}.stats-row{gap:8px}.stat-card{display:block;padding:14px 10px}.stat-icon{display:none}.stat-card b{font-size:20px}.stat-card small{font-size:8px}.item-grid{grid-template-columns:1fr}.community-banner{align-items:start;flex-direction:column;gap:14px}.chat-shell{grid-template-columns:1fr}.rooms{border:0;border-bottom:1px solid var(--line);display:flex;gap:2px;padding:9px;overflow-x:auto}.rooms .sidebar-label,.room-rules{display:none}.room-button{width:auto;white-space:nowrap;font-size:10px;padding:9px}.chat-header{padding:16px}.messages{padding:20px 16px;height:350px}.composer{padding:13px 16px}.composer .button{padding:9px;font-size:10px}.toolbar{align-items:start}.toolbar small{display:none}.workspace-footer{padding:17px 16px;font-size:7px}.balance-metrics{gap:30px}.card{padding:20px 17px}.big-value{font-size:38px}th,td{padding-left:8px;padding-right:8px}.auth-eyebrow{font-size:7px;letter-spacing:1.1px}}
++@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
+diff --git a/docs/dashboard.html b/docs/dashboard.html
+new file mode 100644
+index 0000000..532e07f
+--- /dev/null
++++ b/docs/dashboard.html
+@@ -0,0 +1,78 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#090d17">
++  <meta name="description" content="Your Bitcoin2.0Max command center: portfolios, saved addresses, transaction bookmarks and community chat.">
++  <title>My Command Center · Bitcoin2.0Max</title>
++  <link rel="stylesheet" href="dashboard.css">
++  <script src="dashboard.js" defer></script>
++</head>
++<body>
++  <a class="skip" href="#main">Skip to content</a>
++  <section id="authScreen" class="auth-screen">
++    <div class="auth-story">
++      <a class="brand" href="index.html"><span class="brand-mark">₿</span><span>Bitcoin2.0<strong>Max</strong><small>YOUR NEXT CHAPTER</small></span></a>
++      <div class="auth-eyebrow"><span class="pulse"></span> A PERSONAL SPACE IN A CONNECTED WORLD</div>
++      <h1>Your assets.<br>Your people.<br><em>Your universe.</em></h1>
++      <p>One command center for your crypto life. Organize what matters, see the bigger picture, and build alongside the community.</p>
++      <div class="orbit-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="planet">₿<span>+ Ξ</span></div><span class="orbit-chip chip-one">PORTFOLIO</span><span class="orbit-chip chip-two">COMMUNITY</span><span class="orbit-chip chip-three">YOUR WORLD</span></div>
++      <div class="auth-features"><span>◈ Personal portfolios</span><span>↗ Saved transactions</span><span>◎ Community rooms</span></div>
++      <a class="back-link" href="index.html">← Back to network dashboard</a>
++    </div>
++    <div class="auth-side"><div class="auth-card">
++      <span class="eyebrow">WELCOME TO YOUR COMMAND CENTER</span>
++      <h2 id="authTitle">Good to see you.</h2><p id="authSubtitle" class="muted">Sign in and pick up where you left off.</p>
++      <div class="auth-tabs"><button id="loginTab" class="active" type="button">Sign in</button><button id="registerTab" type="button">Create account</button></div>
++      <form id="authForm">
++        <label id="nameField" hidden>Display name<input name="name" autocomplete="nickname" maxlength="40" placeholder="What should we call you?"></label>
++        <label>Email address<input name="email" type="email" autocomplete="username" maxlength="254" required placeholder="you@example.com"></label>
++        <label>Password<input name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128" required placeholder="At least 12 characters"></label>
++        <p id="registerNotice" class="form-help" hidden>Your display name appears in chat. Email verification and password recovery are not available yet; keep your password safe.</p>
++        <p id="authError" class="error" role="alert"></p>
++        <button id="authSubmit" class="button primary full" type="submit">Enter command center <span>↗</span></button>
++      </form>
++      <div class="auth-foot">Your saved portfolio stays private. Messages in community rooms are shared with members.</div>
++      <p id="serviceStatus" class="service-status" role="status">Connecting to account service…</p>
++    </div><span class="auth-credit">BUILT TO EXPLORE. DESIGNED TO BELONG.</span></div>
++  </section>
++
++  <div id="app" class="app" hidden>
++    <aside id="sidebar" class="sidebar">
++      <a class="brand" href="index.html"><span class="brand-mark">₿</span><span>Bitcoin2.0<strong>Max</strong><small>PERSONAL COMMAND CENTER</small></span></a>
++      <div class="sidebar-label">YOUR WORKSPACE</div>
++      <nav id="workspaceNav" aria-label="Personal dashboard">
++        <button data-view="overview" class="nav-item active"><span>◈</span>Overview</button>
++        <button data-view="holdings" class="nav-item"><span>◔</span>Portfolio</button>
++        <button data-view="addresses" class="nav-item"><span>▤</span>Address book</button>
++        <button data-view="transactions" class="nav-item"><span>↗</span>Transactions</button>
++        <button data-view="watchlist" class="nav-item"><span>☆</span>Watchlist</button>
++        <button data-view="goals" class="nav-item"><span>◎</span>Goals</button>
++        <button data-view="notes" class="nav-item"><span>▱</span>Research notes</button>
++      </nav>
++      <div class="sidebar-label">BETTER TOGETHER</div>
++      <button data-view="chat" class="nav-item community-nav"><span>▣</span>Community <i>4 rooms</i></button>
++      <button data-view="settings" class="nav-item"><span>⚙</span>Account settings</button>
++      <div class="sidebar-bottom"><div class="network-mini"><span class="pulse"></span> BTC + ETH + B2MX<span>Your world, connected.</span></div><a href="index.html" class="nav-item">← Network dashboard</a></div>
++    </aside>
++    <div class="workspace">
++      <header class="topbar">
++        <button id="mobileNav" class="icon-button mobile-only" aria-label="Toggle navigation" aria-expanded="false">☰</button>
++        <div class="breadcrumbs">WORKSPACE <span>/</span> <strong id="breadcrumb">Overview</strong></div>
++        <div class="top-actions"><button id="themeToggle" class="icon-button" aria-label="Switch color theme">◐</button><button id="privacyToggle" class="icon-button" aria-label="Hide portfolio values" aria-pressed="false">◉</button><span id="userInitial" class="avatar">K</span><button id="logout" class="text-button">Sign out</button></div>
++      </header>
++      <main id="main" tabindex="-1">
++        <div class="page-heading"><div><span id="pageEyebrow" class="eyebrow">THE BIG PICTURE</span><h1 id="pageTitle">Your universe, at a glance.</h1><p id="pageSubtitle" class="muted">A little clarity. A lot of possibility.</p></div><button id="addButton" class="button primary" type="button">+ Add holding</button></div>
++        <div id="marketStrip" class="market-strip" aria-live="polite"></div>
++        <div id="viewContent"></div>
++      </main>
++      <footer class="workspace-footer"><span>Bitcoin2.0Max · Built by Kushmanmb</span><span>Track. Connect. Build.</span></footer>
++    </div>
++  </div>
++
++  <dialog id="itemDialog"><form id="itemForm"><div class="dialog-top"><div><span class="eyebrow">MAKE IT YOURS</span><h2 id="dialogTitle">Add item</h2></div><button type="button" id="closeDialog" class="icon-button" aria-label="Close dialog">×</button></div><div id="itemFields"></div><p id="itemError" class="error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancelDialog" class="button secondary">Cancel</button><button type="submit" id="saveItem" class="button primary">Save item ↗</button></div></form></dialog>
++  <div id="toast" class="toast" role="status" hidden></div>
++  <noscript>This dashboard needs JavaScript to sign in and save your workspace.</noscript>
++</body>
++</html>
+diff --git a/docs/dashboard.js b/docs/dashboard.js
+new file mode 100644
+index 0000000..3044dda
+--- /dev/null
++++ b/docs/dashboard.js
+@@ -0,0 +1,300 @@
++(() => {
++  'use strict';
++  const $ = id => document.getElementById(id);
++  const names = { BTC: 'Bitcoin', ETH: 'Ethereum', B2MX: 'Bitcoin2.0Max' };
++  const glyphs = { BTC: '₿', ETH: 'Ξ', B2MX: 'M' };
++  const colors = { BTC: '#ffb769', ETH: '#ac9aff', B2MX: '#57e5ce' };
++  const types = ['holdings', 'addresses', 'transactions', 'watchlist', 'goals', 'notes'];
++  const titles = { overview: ['THE BIG PICTURE', 'Your universe, at a glance.', 'A little clarity. A lot of possibility.'],
++    holdings: ['YOUR ASSETS', 'Build your bigger picture.', 'Track holdings you enter. This dashboard does not move funds.'],
++    addresses: ['YOUR CONNECTIONS', 'An address for everything.', 'Organize public addresses. Never save private keys or seed phrases.'],
++    transactions: ['YOUR TRAIL', 'Keep the important moments.', 'Bookmark transaction hashes and open them in a network explorer.'],
++    watchlist: ['ON YOUR RADAR', 'Watch what matters.', 'Price targets are checked while this dashboard is open.'],
++    goals: ['YOUR NEXT CHAPTER', 'Give your ambition a number.', 'Set portfolio value goals and see your progress.'],
++    notes: ['YOUR IDEAS', 'A little space to think.', 'Keep research, reminders and plans in one place.'],
++    chat: ['BETTER TOGETHER', 'Find your people.', 'Four rooms. Fresh perspectives. One community.'],
++    settings: ['MAKE IT YOURS', 'Your space. Your settings.', 'Manage your account and take your saved workspace with you.'] };
++  const singular = { holdings: 'holding', addresses: 'address', transactions: 'transaction', watchlist: 'watch', goals: 'goal', notes: 'note' };
++  let user = null, data = {}, quotes = {}, view = 'overview', authMode = 'login', editing = null;
++  let room = 'lounge', chatTimer = null, marketTimer = null, chatBusy = false, search = '', chatSignature = '', toastTimer;
++  const usd = value => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value);
++  const quantity = value => new Intl.NumberFormat('en-US', { maximumFractionDigits: 8 }).format(Number(value));
++  const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
++  // All values interpolated into markup are escaped; generated URLs are fixed-origin explorer URLs.
++  const sensitive = value => `<span class="sensitive">${escape(value)}</span>`;
++  const coin = symbol => `<span class="coin ${symbol}">${glyphs[symbol]}</span>`;
++  const symbolOptions = '<option value="BTC">Bitcoin · BTC</option><option value="ETH">Ethereum · ETH</option><option value="B2MX">Bitcoin2.0Max · B2MX</option>';
++  async function api(path, { method = 'GET', value } = {}) {
++    const response = await fetch(`/api/account/${path}`, {
++      method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-B2MX-Request': 'dashboard' },
++      body: value === undefined ? undefined : JSON.stringify(value)
++    });
++    let result;
++    try { result = await response.json(); } catch { throw new Error('Account service is unavailable. Open the dashboard on its account server.'); }
++    if (!response.ok) {
++      if (response.status === 401 && user && path !== 'password') showAuth();
++      throw new Error(result.error ?? 'The request could not be completed.');
++    }
++    return result;
++  }
++  function toast(message) {
++    clearTimeout(toastTimer); $('toast').textContent = message; $('toast').hidden = false;
++    toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4500);
++  }
++  function price(item) {
++    if (item.manualPrice != null && item.manualPrice !== '') return Number(item.manualPrice);
++    const quote = quotes[item.symbol];
++    return quote && Date.now() - quote.at < 5 * 60000 ? quote.price : null;
++  }
++  function portfolio() {
++    let value = 0, cost = 0, valuedCost = 0, missing = 0;
++    const allocation = {};
++    for (const holding of data.holdings ?? []) {
++      const basis = Number(holding.quantity) * Number(holding.averageCost);
++      cost += basis;
++      const quote = price(holding);
++      if (quote == null) { ++missing; continue; }
++      const worth = Number(holding.quantity) * quote;
++      value += worth; valuedCost += basis;
++      allocation[holding.symbol] = (allocation[holding.symbol] ?? 0) + worth;
++    }
++    return { value, cost, valuedCost, missing, allocation, gain: value - valuedCost };
++  }
++  function explorer(type, item) {
++    if (item.network === 'BTC') return `https://mempool.space/${type === 'addresses' ? 'address' : 'tx'}/${encodeURIComponent(item.value)}`;
++    if (item.network === 'ETH') return `https://etherscan.io/${type === 'addresses' ? 'address' : 'tx'}/${encodeURIComponent(item.value)}`;
++    return null;
++  }
++  function actions(type, item, extra = '') {
++    return `<div class="row-actions">${extra}<button data-edit="${escape(item.id)}" data-type="${type}">Edit</button><button data-delete="${escape(item.id)}" data-type="${type}" aria-label="Delete ${escape(item.label ?? item.symbol)}">Delete</button></div>`;
++  }
++  function empty(title, description, icon = '◈') {
++    return `<div class="empty"><div class="empty-icon">${icon}</div><strong>${escape(title)}</strong><span>${escape(description)}</span></div>`;
++  }
++  function holdingsTable(items) {
++    if (!items.length) return empty('Your portfolio starts here.', 'Add your first holding to build a clearer picture of your assets.');
++    return `<div class="table-wrap"><table><thead><tr><th>ASSET</th><th>HOLDINGS</th><th>PRICE / UNIT</th><th>VALUE</th><th>UNREALIZED P/L</th><th></th></tr></thead><tbody>${items.map(item => {
++      const p = price(item), worth = p == null ? null : Number(item.quantity) * p;
++      const gain = worth == null ? null : worth - Number(item.quantity) * Number(item.averageCost);
++      return `<tr><td>${coin(item.symbol)}<span class="asset-name">${names[item.symbol]}<small>${item.symbol}</small></span></td><td>${sensitive(quantity(item.quantity))}</td><td>${p == null ? '—' : usd(p)}<small>${item.manualPrice != null ? 'Your manual estimate' : p == null ? 'Price unavailable' : 'Coinbase spot'}</small></td><td>${worth == null ? '—' : sensitive(usd(worth))}</td><td class="${gain == null ? '' : gain >= 0 ? 'positive' : 'negative'}">${gain == null ? '—' : sensitive(`${gain >= 0 ? '+' : ''}${usd(gain)}`)}</td><td>${actions('holdings', item)}</td></tr>`;
++    }).join('')}</tbody></table></div>`;
++  }
++  function overview() {
++    const p = portfolio();
++    const allocation = Object.entries(p.allocation).filter(([, value]) => value > 0);
++    return `<div class="grid-overview"><section class="card balance-card"><div class="card-label">${p.missing ? 'Priced portfolio subtotal' : 'Estimated portfolio value'}</div><div class="big-value">${sensitive(usd(p.value))}</div><div class="value-foot">${p.missing ? `${p.missing} holding(s) have no current price and are excluded.` : 'Based on your saved holdings and available prices.'}</div><div class="balance-metrics"><div><small>SAVED COST BASIS</small><b>${sensitive(usd(p.cost))}</b></div><div><small>P/L · PRICED HOLDINGS</small><b class="${p.gain >= 0 ? 'positive' : 'negative'}">${sensitive(`${p.gain >= 0 ? '+' : ''}${usd(p.gain)}`)}</b></div></div></section><section class="card"><div class="card-heading"><h2>Asset allocation</h2><span class="badge">BY VALUE</span></div><div class="allocation-wrap"><div id="allocationRing" class="allocation-ring" role="img" aria-label="Allocation by estimated holding value"><span><strong>${allocation.length}</strong>assets priced</span></div><div class="allocation-legend">${allocation.length ? allocation.map(([symbol, value]) => `<div class="legend-line"><span><i class="dot" data-color="${symbol}"></i>${symbol}</span><b>${sensitive(`${(value / p.value * 100).toFixed(1)}%`)}</b></div>`).join('') : '<div class="legend-line">Add holdings to see your allocation.</div>'}</div></div><p class="form-help">Manual estimates are included. Unpriced assets are excluded.</p></section></div><div class="stats-row"><div class="stat-card"><span class="stat-icon">▤</span><div><b>${data.addresses.length}</b><small>SAVED ADDRESSES</small></div></div><div class="stat-card"><span class="stat-icon">↗</span><div><b>${data.transactions.length}</b><small>BOOKMARKED TRANSACTIONS</small></div></div><div class="stat-card"><span class="stat-icon">☆</span><div><b>${data.watchlist.length}</b><small>ASSETS ON YOUR RADAR</small></div></div></div><section class="card"><div class="card-heading"><h2>Your portfolio</h2><button data-go="holdings">View all ↗</button></div>${holdingsTable(data.holdings.slice(0, 5))}</section><section class="card community-banner"><div><span class="eyebrow">BETTER TOGETHER</span><h2>Your next idea could start with a conversation.</h2><p>Meet the community in the lounge, Bitcoin, Ethereum, or builders room.</p></div><button data-go="chat" class="button secondary">Join the conversation ↗</button></section>`;
++  }
++  function itemGrid(type, items) {
++    if (!items.length) return empty(`No ${type === 'watchlist' ? 'watched assets' : type} yet.`, 'Use the add button to make this space yours.');
++    const p = portfolio();
++    return `<div class="item-grid">${items.map(item => {
++      let content;
++      if (type === 'addresses' || type === 'transactions') {
++        const link = explorer(type, item);
++        content = `<div class="item-title"><h3>${escape(item.label)}</h3><span class="badge">${item.network}</span></div><div class="mono">${escape(item.value)}</div><p>${escape(item.note)}</p>${actions(type, item, `<button data-copy="${escape(item.value)}">Copy</button>${link ? `<a class="small-action" href="${escape(link)}" target="_blank" rel="noopener noreferrer">Explorer ↗</a>` : '<span class="small-action">Explorer not available</span>'}`)}`;
++      } else if (type === 'watchlist') {
++        const quote = quotes[item.symbol], available = quote && Date.now() - quote.at < 5 * 60000;
++        const met = available && item.target != null && (item.direction === 'above' ? quote.price >= Number(item.target) : quote.price <= Number(item.target));
++        content = `<div class="item-title"><h3>${coin(item.symbol)}${names[item.symbol]}</h3><span class="badge">${met ? 'TARGET REACHED' : 'ON YOUR RADAR'}</span></div><div class="big-value">${available ? usd(quote.price) : '—'}</div><p>${item.target == null ? 'No price target set.' : `Target ${item.direction} ${usd(Number(item.target))}.`}</p><p>${available ? 'Coinbase spot · checked on this page' : 'Market price unavailable.'}</p>${actions(type, item)}`;
++      } else if (type === 'goals') {
++        const ratio = Number(item.target) > 0 ? Math.min(p.value / Number(item.target), 1) : 0;
++        content = `<h3>${escape(item.label)}</h3><div class="big-value">${sensitive(usd(Number(item.target)))}</div><div class="progress-track"><div class="progress-fill" data-progress="${ratio * 100}"></div></div><p>${sensitive(`${(ratio * 100).toFixed(1)}%`)} of goal · ${sensitive(usd(p.value))} ${p.missing ? 'priced subtotal' : 'estimated portfolio value'}</p>${actions(type, item)}`;
++      } else content = `<h3>${escape(item.label)}</h3><p>${escape(item.body)}</p>${actions(type, item)}`;
++      return `<article class="card item-card">${content}</article>`;
++    }).join('')}</div>`;
++  }
++  function chatView() {
++    return `<div class="chat-shell"><aside class="rooms"><div class="sidebar-label">COMMUNITY ROOMS</div>${['lounge', 'bitcoin', 'ethereum', 'builders'].map(name => `<button class="room-button ${name === room ? 'active' : ''}" data-room="${name}"># ${name}</button>`).join('')}<p class="room-rules">Be kind. Share ideas.<br>Never post private keys, seed phrases or personal financial information.<br><br>Members can report messages.</p></aside><section class="chat-main"><header class="chat-header"><h2># ${room}</h2><span id="chatStatus"><span class="pulse"></span>Updates every 4 seconds</span></header><div id="messages" class="messages" role="log" aria-label="Community messages"></div><form id="chatForm" class="composer"><div class="composer-box"><textarea id="messageInput" aria-label="Message" placeholder="Bring a thought. Start a conversation…" maxlength="1000" required></textarea><button class="button primary" type="submit">Send ↗</button></div><small>Messages are shared with signed-in members. Keep the conversation respectful.</small></form></section></div>`;
++  }
++  function settingsView() {
++    return `<div class="settings-grid"><section class="card"><span class="eyebrow">YOUR ACCOUNT</span><h2>Good to have you here.</h2><div class="settings-profile">${escape(user.name)}<span>${escape(user.email)}</span><span class="mono">Account ID: ${escape(user.id)}</span></div><p>Your email identifies this account. Email verification and password recovery are not configured yet.</p><h2>Take your workspace with you.</h2><p>Download a JSON backup of your holdings, saved addresses, transaction bookmarks, goals and notes.</p><button id="exportData" class="button secondary">↓ Export my workspace</button></section><section class="card"><span class="eyebrow">ACCOUNT SECURITY</span><h2>Update your password.</h2><form id="passwordForm"><label>Current password<input name="currentPassword" type="password" autocomplete="current-password" minlength="12" maxlength="128" required></label><label>New password<input name="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><button type="submit" class="button primary">Update password ↗</button></form><p>Changing your password signs out your other sessions.</p></section>${user.moderator ? '<section class="card"><h2>Community reports</h2><div id="moderationReports"></div></section>' : ''}</div>`;
++  }
++  function render() {
++    if (!user) return;
++    const t = titles[view];
++    $('pageEyebrow').textContent = t[0]; $('pageTitle').textContent = t[1]; $('pageSubtitle').textContent = t[2];
++    $('breadcrumb').textContent = view === 'holdings' ? 'Portfolio' : view[0].toUpperCase() + view.slice(1);
++    $('addButton').hidden = view === 'chat' || view === 'settings';
++    $('addButton').textContent = `+ Add ${singular[view === 'overview' ? 'holdings' : view]}`;
++    document.querySelectorAll('[data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === view));
++    if (view === 'overview') $('viewContent').innerHTML = overview();
++    else if (view === 'chat') $('viewContent').innerHTML = chatView();
++    else if (view === 'settings') $('viewContent').innerHTML = settingsView();
++    else {
++      const items = (data[view] ?? []).filter(item => JSON.stringify(item).toLowerCase().includes(search.toLowerCase()));
++      $('viewContent').innerHTML = `<div class="toolbar"><input id="itemSearch" type="search" aria-label="Search saved items" placeholder="Search your ${view}…" value="${escape(search)}"><small>${items.length} saved item(s)</small></div>${view === 'holdings' ? `<section class="card">${holdingsTable(items)}</section>` : itemGrid(view, items)}`;
++      $('itemSearch').addEventListener('input', event => {
++        const start = event.target.selectionStart; search = event.target.value; render();
++        $('itemSearch').focus(); $('itemSearch').setSelectionRange(start, start);
++      });
++    }
++    document.querySelectorAll('[data-color]').forEach(node => { node.style.backgroundColor = colors[node.dataset.color]; });
++    document.querySelectorAll('[data-progress]').forEach(node => { node.style.width = `${node.dataset.progress}%`; });
++    const ring = $('allocationRing');
++    if (ring) {
++      const p = portfolio(); let position = 0;
++      const stops = Object.entries(p.allocation).filter(([, value]) => value > 0).map(([symbol, value]) => {
++        const start = position; position += value / p.value * 100; return `${colors[symbol]} ${start}% ${position}%`;
++      });
++      if (stops.length) ring.style.background = `conic-gradient(${stops.join(',')})`;
++    }
++    if (view === 'chat') { chatSignature = ''; loadChat(); $('chatForm').addEventListener('submit', sendMessage); }
++    if (view === 'settings') {
++      $('exportData').addEventListener('click', exportData);
++      $('passwordForm').addEventListener('submit', changePassword);
++      if (user.moderator) loadReports();
++    }
++  }
++  function setView(next) {
++    if (!titles[next]) return;
++    view = next; search = ''; clearInterval(chatTimer); chatTimer = null;
++    $('sidebar').classList.remove('open'); $('mobileNav').setAttribute('aria-expanded', 'false');
++    render();
++    if (view === 'chat') chatTimer = setInterval(loadChat, 4000);
++  }
++  async function loadData() { data = await api('items'); render(); }
++  async function loadMarket() {
++    try {
++      const result = await api('market'); quotes = result.quotes;
++      $('marketStrip').innerHTML = `${['BTC', 'ETH'].map(symbol => `<span class="quote"><b>${symbol}</b>${quotes[symbol] ? usd(quotes[symbol].price) : 'Unavailable'}</span>`).join('')}<span class="quote"><b>B2MX</b>No public market quote</span><span class="market-note">Coinbase spot · ${Object.keys(quotes).length ? `checked ${new Date(result.checked).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'price service unavailable'}</span>`;
++      if (view !== 'chat' && view !== 'settings' && !document.activeElement?.matches('#itemSearch')) render();
++    } catch (error) { if (user) toast(error.message); }
++  }
++  async function enter(account) {
++    user = account; $('authScreen').hidden = true; $('app').hidden = false;
++    $('userInitial').textContent = user.name.slice(0, 1).toUpperCase();
++    $('authForm').reset(); $('authError').textContent = '';
++    try { await loadData(); await loadMarket(); } catch (error) { toast(error.message); }
++    clearInterval(marketTimer); marketTimer = setInterval(() => { if (!document.hidden && user) loadMarket(); }, 60000);
++  }
++  function showAuth() {
++    user = null; data = {}; quotes = {}; clearInterval(chatTimer); clearInterval(marketTimer);
++    view = 'overview'; room = 'lounge'; search = ''; chatSignature = '';
++    $('itemDialog').close(); $('app').hidden = true; $('authScreen').hidden = false;
++  }
++  function setAuthMode(mode) {
++    authMode = mode; const register = mode === 'register';
++    $('nameField').hidden = !register; $('authForm').elements.name.required = register;
++    $('registerNotice').hidden = !register;
++    $('authForm').elements.password.autocomplete = register ? 'new-password' : 'current-password';
++    $('authTitle').textContent = register ? 'Make room for your future.' : 'Good to see you.';
++    $('authSubtitle').textContent = register ? 'Your personal workspace starts here.' : 'Sign in and pick up where you left off.';
++    $('authSubmit').textContent = register ? 'Create my command center ↗' : 'Enter command center ↗';
++    $('loginTab').classList.toggle('active', !register); $('registerTab').classList.toggle('active', register);
++    $('authError').textContent = '';
++  }
++  const schemas = {
++    addresses: [['label', 'Name', 'text'], ['network', 'Network', 'symbol'], ['value', 'Public address', 'text'], ['note', 'Note (optional)', 'textarea', false]],
++    transactions: [['label', 'Name', 'text'], ['network', 'Network', 'symbol'], ['value', 'Transaction hash', 'text'], ['note', 'Note (optional)', 'textarea', false]],
++    holdings: [['symbol', 'Asset', 'symbol'], ['quantity', 'Quantity held', 'decimal'], ['averageCost', 'Average purchase cost per coin (USD)', 'decimal'], ['manualPrice', 'Manual price per coin (USD, optional)', 'decimal', false]],
++    watchlist: [['symbol', 'Asset', 'symbol'], ['target', 'Target price (USD, optional)', 'decimal', false], ['direction', 'Target direction', 'direction']],
++    goals: [['label', 'Goal name', 'text'], ['target', 'Target portfolio value (USD)', 'decimal']],
++    notes: [['label', 'Title', 'text'], ['body', 'Your research or reminder', 'textarea']]
++  };
++  function openItem(type, item = null) {
++    editing = { type, id: item?.id };
++    $('dialogTitle').textContent = `${item ? 'Edit' : 'Add'} ${singular[type]}`;
++    $('itemError').textContent = '';
++    $('itemFields').innerHTML = schemas[type].map(([key, label, kind, required = true]) => {
++      const value = item?.[key] ?? '';
++      const flags = `${required ? 'required' : ''} name="${key}"`;
++      const field = kind === 'symbol' ? `<select ${flags}>${symbolOptions}</select>` :
++        kind === 'direction' ? `<select ${flags}><option value="above">At or above target</option><option value="below">At or below target</option></select>` :
++        kind === 'textarea' ? `<textarea ${flags} maxlength="${type === 'notes' ? 2000 : 500}">${escape(value)}</textarea>` :
++        `<input ${flags} type="text" ${kind === 'decimal' ? 'inputmode="decimal"' : ''} maxlength="${key === 'label' ? 80 : 128}" value="${escape(value)}">`;
++      return `<label>${label}${field}</label>`;
++    }).join('') + (type === 'holdings' ? '<p class="form-help">Leave manual price blank to use available BTC or ETH spot prices. B2MX has no public market quote; a manual price is your estimate.</p>' : type === 'addresses' ? '<p class="form-help">Saved addresses are bookmarks. Address format is checked, but ownership and checksum are not verified.</p>' : '');
++    if (item) for (const [key] of schemas[type]) $('itemForm').elements[key].value = item[key] ?? '';
++    $('itemDialog').showModal();
++  }
++  async function saveItem(event) {
++    event.preventDefault(); $('saveItem').disabled = true; $('itemError').textContent = '';
++    try {
++      const item = Object.fromEntries(new FormData($('itemForm')));
++      await api(editing.id ? `items/${editing.id}` : 'items', { method: editing.id ? 'PUT' : 'POST', value: { type: editing.type, item } });
++      $('itemDialog').close(); await loadData(); toast('Saved to your workspace.');
++    } catch (error) { $('itemError').textContent = error.message; }
++    finally { $('saveItem').disabled = false; }
++  }
++  async function loadChat() {
++    if (!user || view !== 'chat' || chatBusy || document.hidden) return;
++    chatBusy = true; const requestedRoom = room;
++    try {
++      const result = await api(`chat?room=${room}`);
++      if (view !== 'chat' || room !== requestedRoom || !user) return;
++      const signature = JSON.stringify(result.messages);
++      if (signature === chatSignature) return;
++      const box = $('messages'), nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
++      const initial = !chatSignature; chatSignature = signature;
++      box.innerHTML = result.messages.length ? result.messages.map(message => `<article class="message"><span class="avatar">${escape(message.author[0].toUpperCase())}</span><div class="message-content"><div class="message-meta"><b>${escape(message.author)}</b><time datetime="${new Date(message.created).toISOString()}">${new Date(message.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time><button class="message-action" ${message.authorId === user.id || user.moderator ? `data-message-delete="${message.id}"` : `data-report="${message.id}"`}>${message.authorId === user.id || user.moderator ? 'Delete' : 'Report'}</button></div><p>${escape(message.body)}</p></div></article>`).join('') : empty('A fresh conversation starts here.', 'Say hello. Share an idea. Make a connection.', '◎');
++      if (initial || nearBottom) box.scrollTop = box.scrollHeight;
++      $('chatStatus').textContent = 'Connected · updates every 4 seconds';
++    } catch (error) { if ($('chatStatus')) $('chatStatus').textContent = error.message; }
++    finally { chatBusy = false; }
++  }
++  async function sendMessage(event) {
++    event.preventDefault(); const form = event.currentTarget, button = form.querySelector('button');
++    const input = $('messageInput'), message = input.value.trim(); if (!message) return;
++    button.disabled = true;
++    try { await api('chat', { method: 'POST', value: { room, body: message } }); input.value = ''; chatSignature = ''; await loadChat(); input.focus(); }
++    catch (error) { toast(error.message); }
++    finally { button.disabled = false; }
++  }
++  async function loadReports() {
++    try {
++      const result = await api('reports');
++      if (!$('moderationReports')) return;
++      $('moderationReports').innerHTML = result.reports.length ? result.reports.map(report => `<article class="item-card"><h3># ${escape(report.room)} · ${escape(report.author)}</h3><p>${escape(report.body)}</p><small>${report.count} report(s)</small><button class="small-action" data-message-delete="${report.id}">Remove message</button></article>`).join('') : '<p>No reported messages.</p>';
++    } catch (error) { toast(error.message); }
++  }
++  async function exportData() {
++    try {
++      const result = await api('export'); const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
++      const url = URL.createObjectURL(blob), anchor = document.createElement('a');
++      anchor.href = url; anchor.download = 'bitcoin2max-my-workspace.json'; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
++      toast('Workspace backup downloaded. Keep it private.');
++    } catch (error) { toast(error.message); }
++  }
++  async function changePassword(event) {
++    event.preventDefault(); const form = event.currentTarget, button = form.querySelector('button'); button.disabled = true;
++    try { await api('password', { method: 'POST', value: Object.fromEntries(new FormData(form)) }); form.reset(); toast('Password changed. Your other sessions have been signed out.'); }
++    catch (error) { toast(error.message); }
++    finally { button.disabled = false; }
++  }
++  document.addEventListener('click', async event => {
++    const button = event.target.closest('button'); if (!button) return;
++    try {
++      if (button.dataset.view || button.dataset.go) return setView(button.dataset.view ?? button.dataset.go);
++      if (button.dataset.edit) return openItem(button.dataset.type, data[button.dataset.type].find(item => item.id === button.dataset.edit));
++      if (button.dataset.delete) { await api(`items/${button.dataset.delete}`, { method: 'DELETE' }); await loadData(); return toast('Item removed.'); }
++      if (button.dataset.copy) { await navigator.clipboard.writeText(button.dataset.copy); return toast('Copied.'); }
++      if (button.dataset.room) { room = button.dataset.room; return setView('chat'); }
++      if (button.dataset.messageDelete) { await api(`chat/${button.dataset.messageDelete}`, { method: 'DELETE' }); chatSignature = ''; if (view === 'chat') await loadChat(); else await loadReports(); return toast('Message removed.'); }
++      if (button.dataset.report) { await api(`chat/${button.dataset.report}/report`, { method: 'POST', value: {} }); return toast('Report saved for moderator review.'); }
++    } catch (error) { toast(error.message); }
++  });
++  $('loginTab').addEventListener('click', () => setAuthMode('login'));
++  $('registerTab').addEventListener('click', () => setAuthMode('register'));
++  $('authForm').addEventListener('submit', async event => {
++    event.preventDefault(); $('authSubmit').disabled = true; $('authError').textContent = '';
++    try { const result = await api(authMode, { method: 'POST', value: Object.fromEntries(new FormData($('authForm'))) }); await enter(result.user); }
++    catch (error) { $('authError').textContent = error.message; }
++    finally { $('authSubmit').disabled = false; }
++  });
++  $('addButton').addEventListener('click', () => openItem(view === 'overview' ? 'holdings' : view));
++  $('itemForm').addEventListener('submit', saveItem);
++  $('closeDialog').addEventListener('click', () => $('itemDialog').close());
++  $('cancelDialog').addEventListener('click', () => $('itemDialog').close());
++  $('logout').addEventListener('click', async () => { try { await api('logout', { method: 'POST', value: {} }); showAuth(); } catch (error) { toast(error.message); } });
++  $('themeToggle').addEventListener('click', () => { document.body.classList.toggle('light'); try { localStorage.setItem('b2mx-theme', document.body.classList.contains('light') ? 'light' : 'dark'); } catch {} });
++  $('privacyToggle').addEventListener('click', () => { document.body.classList.toggle('privacy'); const hidden = document.body.classList.contains('privacy'); $('privacyToggle').setAttribute('aria-pressed', String(hidden)); $('privacyToggle').setAttribute('aria-label', hidden ? 'Show portfolio values' : 'Hide portfolio values'); });
++  $('mobileNav').addEventListener('click', () => { const open = $('sidebar').classList.toggle('open'); $('mobileNav').setAttribute('aria-expanded', String(open)); });
++  try { document.body.classList.toggle('light', localStorage.getItem('b2mx-theme') === 'light'); } catch {}
++  document.addEventListener('visibilitychange', () => { if (!document.hidden && user) { if (view === 'chat') loadChat(); loadMarket(); } });
++  (async () => {
++    try {
++      await api('health'); $('serviceStatus').textContent = 'Account service connected';
++      try { const result = await api('me'); await enter(result.user); } catch (error) { if (!error.message.includes('sign in')) $('authError').textContent = error.message; }
++    } catch (error) { $('serviceStatus').textContent = 'Account service offline. Run the dashboard on its account server to sign in.'; $('authSubmit').disabled = true; }
++  })();
++})();
+diff --git a/docs/index.html b/docs/index.html
+index 2c42040..bfc9f12 100644
+--- a/docs/index.html
++++ b/docs/index.html
+@@ -113,6 +113,10 @@
+ 
+       <ul class="nav__links" id="navLinks">
+ 
++        <li>
++          <a href="dashboard.html">My Dashboard ↗</a>
++        </li>
++
+         <li>
+           <a href="#network">Network</a>
+         </li>
+diff --git a/package.json b/package.json
+new file mode 100644
+index 0000000..392b8bd
+--- /dev/null
++++ b/package.json
+@@ -0,0 +1,10 @@
++{
++  "name": "bitcoin2max-dashboard",
++  "private": true,
++  "type": "module",
++  "engines": { "node": ">=24.0.0 <25" },
++  "scripts": {
++    "start": "node dashboard-server/server.mjs",
++    "test:dashboard": "node --test dashboard-server/server.test.mjs"
++  }
++}
+-- 
+2.51.1
+

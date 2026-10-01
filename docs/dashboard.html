@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d17">
+  <meta name="description" content="Your Bitcoin2.0Max command center: portfolios, saved addresses, transaction bookmarks and community chat.">
+  <title>My Command Center · Bitcoin2.0Max</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <script src="dashboard.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <section id="authScreen" class="auth-screen">
+    <div class="auth-story">
+      <a class="brand" href="index.html"><span class="brand-mark">₿</span><span>Bitcoin2.0<strong>Max</strong><small>YOUR NEXT CHAPTER</small></span></a>
+      <div class="auth-eyebrow"><span class="pulse"></span> A PERSONAL SPACE IN A CONNECTED WORLD</div>
+      <h1>Your assets.<br>Your people.<br><em>Your universe.</em></h1>
+      <p>One command center for your crypto life. Organize what matters, see the bigger picture, and build alongside the community.</p>
+      <div class="orbit-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="planet">₿<span>+ Ξ</span></div><span class="orbit-chip chip-one">PORTFOLIO</span><span class="orbit-chip chip-two">COMMUNITY</span><span class="orbit-chip chip-three">YOUR WORLD</span></div>
+      <div class="auth-features"><span>◈ Personal portfolios</span><span>↗ Saved transactions</span><span>◎ Community rooms</span></div>
+      <a class="back-link" href="index.html">← Back to network dashboard</a>
+    </div>
+    <div class="auth-side"><div class="auth-card">
+      <span class="eyebrow">WELCOME TO YOUR COMMAND CENTER</span>
+      <h2 id="authTitle">Good to see you.</h2><p id="authSubtitle" class="muted">Sign in and pick up where you left off.</p>
+      <div class="auth-tabs"><button id="loginTab" class="active" type="button">Sign in</button><button id="registerTab" type="button">Create account</button></div>
+      <form id="authForm">
+        <label id="nameField" hidden>Display name<input name="name" autocomplete="nickname" maxlength="40" placeholder="What should we call you?"></label>
+        <label>Email address<input name="email" type="email" autocomplete="username" maxlength="254" required placeholder="you@example.com"></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128" required placeholder="At least 12 characters"></label>
+        <p id="registerNotice" class="form-help" hidden>Your display name appears in chat. Email verification and password recovery are not available yet; keep your password safe.</p>
+        <p id="authError" class="error" role="alert"></p>
+        <button id="authSubmit" class="button primary full" type="submit">Enter command center <span>↗</span></button>
+      </form>
+      <div class="auth-foot">Your saved portfolio stays private. Messages in community rooms are shared with members.</div>
+      <p id="serviceStatus" class="service-status" role="status">Connecting to account service…</p>
+    </div><span class="auth-credit">BUILT TO EXPLORE. DESIGNED TO BELONG.</span></div>
+  </section>
+
+  <div id="app" class="app" hidden>
+    <aside id="sidebar" class="sidebar">
+      <a class="brand" href="index.html"><span class="brand-mark">₿</span><span>Bitcoin2.0<strong>Max</strong><small>PERSONAL COMMAND CENTER</small></span></a>
+      <div class="sidebar-label">YOUR WORKSPACE</div>
+      <nav id="workspaceNav" aria-label="Personal dashboard">
+        <button data-view="overview" class="nav-item active"><span>◈</span>Overview</button>
+        <button data-view="holdings" class="nav-item"><span>◔</span>Portfolio</button>
+        <button data-view="addresses" class="nav-item"><span>▤</span>Address book</button>
+        <button data-view="transactions" class="nav-item"><span>↗</span>Transactions</button>
+        <button data-view="watchlist" class="nav-item"><span>☆</span>Watchlist</button>
+        <button data-view="goals" class="nav-item"><span>◎</span>Goals</button>
+        <button data-view="notes" class="nav-item"><span>▱</span>Research notes</button>
+      </nav>
+      <div class="sidebar-label">BETTER TOGETHER</div>
+      <button data-view="chat" class="nav-item community-nav"><span>▣</span>Community <i>4 rooms</i></button>
+      <button data-view="settings" class="nav-item"><span>⚙</span>Account settings</button>
+      <div class="sidebar-bottom"><div class="network-mini"><span class="pulse"></span> BTC + ETH + B2MX<span>Your world, connected.</span></div><a href="index.html" class="nav-item">← Network dashboard</a></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <button id="mobileNav" class="icon-button mobile-only" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+        <div class="breadcrumbs">WORKSPACE <span>/</span> <strong id="breadcrumb">Overview</strong></div>
+        <div class="top-actions"><button id="themeToggle" class="icon-button" aria-label="Switch color theme">◐</button><button id="privacyToggle" class="icon-button" aria-label="Hide portfolio values" aria-pressed="false">◉</button><span id="userInitial" class="avatar">K</span><button id="logout" class="text-button">Sign out</button></div>
+      </header>
+      <main id="main" tabindex="-1">
+        <div class="page-heading"><div><span id="pageEyebrow" class="eyebrow">THE BIG PICTURE</span><h1 id="pageTitle">Your universe, at a glance.</h1><p id="pageSubtitle" class="muted">A little clarity. A lot of possibility.</p></div><button id="addButton" class="button primary" type="button">+ Add holding</button></div>
+        <div id="marketStrip" class="market-strip" aria-live="polite"></div>
+        <div id="viewContent"></div>
+      </main>
+      <footer class="workspace-footer"><span>Bitcoin2.0Max · Built by Kushmanmb</span><span>Track. Connect. Build.</span></footer>
+    </div>
+  </div>
+
+  <dialog id="itemDialog"><form id="itemForm"><div class="dialog-top"><div><span class="eyebrow">MAKE IT YOURS</span><h2 id="dialogTitle">Add item</h2></div><button type="button" id="closeDialog" class="icon-button" aria-label="Close dialog">×</button></div><div id="itemFields"></div><p id="itemError" class="error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancelDialog" class="button secondary">Cancel</button><button type="submit" id="saveItem" class="button primary">Save item ↗</button></div></form></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <noscript>This dashboard needs JavaScript to sign in and save your workspace.</noscript>
+</body>
+</html>
