@@ -1,134 +1,237 @@
-# Bitcoin 2.0max — Project Roadmap
+# Bitcoin2.0Max + Ethereum — Project Roadmap
 
-This document tracks the planned milestones and features for the Bitcoin 2.0max project.
-Items are organised by release milestone.  Completed items are checked.
+Last updated: September 30, 2026
 
----
+Our goal is to build useful blockchain tools, a personal
+workspace, and independently verifiable native-chain infrastructure.
 
-## Milestone 1 — Foundation (v2.0.0) ✅
+Milestones represent development priorities, not release dates.
+A working interface does not establish production readiness.
 
-Core infrastructure required to compile, run, and validate the node.
+## Current Position
 
-- [x] CMake-based build system (C++17)
-- [x] Configurable block parameters (60-second target, 32 MiB max block size)
-- [x] Electrum JSON-RPC client (independent of BOLDwallet)
-- [x] Config file parser (`~/.bitcoin2max/bitcoin2max.conf`)
-- [x] Basic P2P node loop
-- [x] Unit tests for consensus parameters and config loading
-- [x] CI workflow (build + test on Ubuntu)
-- [x] Release & package workflow (binary tarballs, Docker image)
-- [x] CODEOWNERS and GitHub label definitions
+- The public website is hosted on GitHub Pages.
+- Bitcoin market data and explorer features are implemented.
+- Ethereum network monitoring and address lookup are implemented.
+- The personal dashboard includes interfaces for accounts,
+  portfolios, saved addresses, transactions, notes, and chat.
+- Public account-service deployment remains unfinished.
+- The C++ node includes startup, configuration, incoming peer
+  connections, an Electrum client, and local status endpoints.
+- Native-chain synchronization and consensus remain incomplete.
 
----
-
-## Milestone 2 — Network Layer (v2.1.0)
-
-Robust peer-to-peer networking with enhanced peer discovery and sync.
-
-- [ ] Implement full peer handshake protocol
-- [ ] Persistent peer address book
-- [ ] Configurable maximum peer connections
-- [ ] Asynchronous I/O via Boost.Asio (replace blocking socket calls)
-- [ ] Tor integration (route all traffic via SOCKS5 proxy)
-- [ ] DNS seed bootstrap for initial peer discovery
-- [ ] Peer ban / penalty scoring
+Implemented features still require ongoing testing.
+Completed milestones must include evidence of their exit criteria.
 
 ---
 
-## Milestone 3 — Block Validation (v2.2.0)
+## 1. Website and Network Dashboard
 
-Full script validation and consensus rule enforcement.
+Status: In progress
 
-- [ ] Script interpreter (OP codes)
-- [ ] Transaction input/output validation
-- [ ] Merkle tree verification
-- [ ] Chain-tip selection (most cumulative work)
-- [ ] Orphan block handling
-- [ ] Checkpoint database
-- [ ] Block-height reorganisation (reorg) logic
+- [ ] Verify consistent Bitcoin2.0Max + Ethereum branding.
+- [ ] Verify matching Bitcoin and Ethereum price cards.
+- [ ] Verify both price charts and their data sources.
+- [ ] Test dropdown navigation on desktop and mobile.
+- [ ] Test dark, light, and seasonal themes.
+- [ ] Preserve keyboard navigation and reduced-motion support.
+- [ ] Clearly label Bitcoin, Ethereum, and Bitcoin2.0Max data.
+- [ ] Show loading, offline, and stale-data states.
+- [ ] Publish the updated manifesto and roadmap.
+- [ ] Check links, assets, layout, and browser errors.
+
+Exit criteria:
+All primary pages work on desktop and mobile, with readable
+content, functioning navigation, and honest data-source labels.
+
+## 2. Accounts and Personal Workspace
+
+Status: Interface and backend implementation available;
+public deployment pending
+
+- [ ] Review the account server before public deployment.
+- [ ] Deploy the backend with HTTPS and persistent storage.
+- [ ] Connect the dashboard to its deployed account API.
+- [ ] Configure permitted origins and secure session handling.
+- [ ] Verify registration, sign-in, sign-out, and session expiry.
+- [ ] Add email verification and password recovery.
+- [ ] Verify users can access only their own saved records.
+- [ ] Test portfolios, address books, and transaction bookmarks.
+- [ ] Test watchlists, goals, and research notes.
+- [ ] Add account export and deletion.
+- [ ] Test database backups and restoration.
+- [ ] Document privacy practices and retention.
+
+Exit criteria:
+A user can register, return later, and retrieve their own data.
+Authorization tests pass, and backups survive a recovery drill.
+
+## 3. Community Chat
+
+Status: Implementation available; deployment and review pending
+
+- [ ] Verify room access and message persistence.
+- [ ] Enforce authentication and message-length limits.
+- [ ] Add rate limits and spam controls.
+- [ ] Add reporting and moderator tools.
+- [ ] Publish community rules.
+- [ ] Test safe rendering of user-generated content.
+- [ ] Define message retention and deletion behavior.
+- [ ] Clearly discourage sharing keys and recovery phrases.
+
+Exit criteria:
+Members can communicate reliably, while moderators can
+respond to abuse and unauthorized access is rejected.
+
+## 4. Node Reliability and Monitoring
+
+Status: Development daemon implemented
+
+- [ ] Verify clean builds and automated tests.
+- [ ] Fix thread ownership and graceful shutdown.
+- [ ] Test startup failures and occupied ports.
+- [ ] Improve Electrum connection and reconnection handling.
+- [ ] Report chain height and hash from verified state.
+- [ ] Distinguish process health from synchronization status.
+- [ ] Harden HTTP request handling and connection timeouts.
+- [ ] Add service supervision, logs, and restart instructions.
+- [ ] Connect the website to a protected HTTPS monitoring API.
+- [ ] Separate public monitoring from administrative endpoints.
+
+Exit criteria:
+The daemon starts, stops, and restarts reliably.
+Its monitoring endpoints accurately describe its actual state.
+
+## 5. Native Chain Specification and Local Testing
+
+Status: Planned; implementation must be verified
+
+- [ ] Document consensus rules and network identity.
+- [ ] Define genesis block and network-specific identifiers.
+- [ ] Specify proof of work and difficulty adjustment.
+- [ ] Specify issuance, subsidy, maturity, and supply rules.
+- [ ] Define address formats and transaction rules.
+- [ ] Establish separate local-test, testnet, and mainnet data.
+- [ ] Implement deterministic local block generation.
+- [ ] Test valid and invalid transactions.
+- [ ] Persist blocks, chain state, and the UTXO set.
+- [ ] Verify state after restarting the node.
+
+The 60-second block target and 32 MiB block limit are
+development parameters, not proof of achieved throughput.
+
+Exit criteria:
+A repeatable local test creates blocks, validates transactions,
+rejects invalid state transitions, and survives a restart.
+
+## 6. Peer Networking and Synchronization
+
+Status: Basic incoming connections implemented;
+full networking incomplete
+
+- [ ] Complete and test peer handshakes.
+- [ ] Add outbound connections and peer discovery.
+- [ ] Maintain a persistent peer address book.
+- [ ] Enforce connection limits and protocol bounds.
+- [ ] Implement header and block synchronization.
+- [ ] Validate received blocks before accepting them.
+- [ ] Select the chain with the most valid cumulative work.
+- [ ] Handle missing parents and chain reorganizations.
+- [ ] Add peer penalties and resource-abuse protection.
+- [ ] Evaluate asynchronous I/O and optional Tor support.
+
+Exit criteria:
+Multiple independent nodes synchronize, reject invalid peers
+and blocks, and converge after a controlled chain reorganization.
+
+## 7. Transaction Validation, Mempool, and Wallet Support
+
+Status: Incomplete
+
+- [ ] Complete script and signature validation.
+- [ ] Verify Merkle roots, transaction inputs, and outputs.
+- [ ] Reject double spending and invalid coin creation.
+- [ ] Implement bounded mempool admission and eviction.
+- [ ] Relay validated transactions.
+- [ ] Define replacement and fee policies.
+- [ ] Add fee estimation when sufficient data exists.
+- [ ] Implement address history and balance indexing.
+- [ ] Provide documented wallet integration and broadcast APIs.
+- [ ] Test wallet recovery and network compatibility.
+
+Exit criteria:
+Compatible wallets can create transactions that independent
+nodes validate, relay, confirm, and retain across restarts.
+
+## 8. Ethereum Integration
+
+Status: Read-only integration in progress
+
+- [ ] Verify Ethereum Mainnet chain ID before accepting RPC data.
+- [ ] Test block, gas, transaction-count, and balance displays.
+- [ ] Verify ETH price updates and stale-data handling.
+- [ ] Clearly distinguish native ETH from token balances.
+- [ ] Add provider failure handling and request limits.
+- [ ] Support saved Ethereum addresses in the personal dashboard.
+- [ ] Evaluate optional wallet connection with explicit permissions.
+- [ ] Review any transaction-signing feature separately.
+
+A shared interface does not merge Bitcoin, Ethereum, and
+Bitcoin2.0Max or make their assets interchangeable.
+
+Exit criteria:
+Ethereum information is accurate, clearly attributed, and
+usable without requesting private keys or recovery phrases.
+
+## 9. Security, Performance, and Release Readiness
+
+Status: Ongoing across every milestone
+
+- [ ] Audit dependencies and review exposed services.
+- [ ] Fuzz network messages, transactions, and parsers.
+- [ ] Run memory and undefined-behavior sanitizers.
+- [ ] Test malformed input and resource exhaustion.
+- [ ] Establish responsible vulnerability disclosure.
+- [ ] Publish reproducible build instructions.
+- [ ] Benchmark on documented hardware.
+- [ ] Measure bandwidth, storage, and synchronization costs.
+- [ ] Obtain independent review of consensus-critical code.
+- [ ] Run a public testnet with documented operating procedures.
+- [ ] Publish known limitations and release evidence.
+
+Exit criteria:
+Release claims are supported by tests and review.
+Critical findings are resolved before production use.
 
 ---
 
-## Milestone 4 — Mempool & Relay (v2.3.0)
+## Future Ideas — Not Scheduled
 
-Transaction mempool, fee estimation, and transaction relay.
+- Human-readable address names.
+- Additional read-only network integrations.
+- Mobile-friendly light-client tools.
+- Optional wallet interfaces.
+- Lightning-related research.
+- Schnorr and Taproot compatibility research.
+- Cross-chain functionality with explicit trust assumptions.
 
-- [ ] In-memory transaction pool
-- [ ] Fee-rate ordering and eviction policy
-- [ ] RBF (Replace-By-Fee) support
-- [ ] Transaction relay to peers
-- [ ] Mempool persistence across restarts
-- [ ] Fee estimation API
+These ideas require separate specifications and review.
+They are not promises of availability.
 
----
+## Immediate Priorities
 
-## Milestone 5 — Wallet API (v2.4.0)
+1. Verify node startup and local status output.
+2. Complete public account-server deployment.
+3. Validate website price cards, navigation, and themes.
+4. Establish reproducible native-chain local tests.
+5. Complete persistent chain state and synchronization.
 
-Electrum-compatible wallet API served over the Electrum protocol.
+## Contributing
 
-- [ ] Electrum server-side protocol (TCP JSON-RPC)
-- [ ] Address-to-UTXO index
-- [ ] Transaction history per address
-- [ ] Balance query
-- [ ] Raw transaction broadcast endpoint
-- [ ] SSL/TLS support for remote wallet connections
+Open an issue describing the problem, proposed behavior,
+and how success can be tested.
 
----
+Keep changes focused. Include relevant tests and documentation.
+Mark milestones complete only when their exit criteria are met.
 
-## Milestone 6 — Performance & Scalability (v3.0.0)
-
-Optimisations to fully exploit the 32 MiB block capacity.
-
-- [ ] UTXO set (LevelDB or RocksDB backend)
-- [ ] Block and UTXO cache tuning
-- [ ] Parallel script validation (thread pool)
-- [ ] SIMD-accelerated hash routines (SHA-256, RIPEMD-160)
-- [ ] Block index stored on disk (fast restart)
-- [ ] Benchmarking harness and regression CI job
-- [ ] Profile-guided optimisation (PGO) build option
-
----
-
-## Milestone 7 — Security & Hardening (ongoing)
-
-Continuous security improvements.
-
-- [ ] Fuzz testing (libFuzzer / AFL++) for parser inputs
-- [ ] CodeQL code-scanning in CI
-- [ ] Address Sanitizer / UBSan CI job
-- [ ] Responsible disclosure policy (SECURITY.md)
-- [ ] Regular dependency audits
-- [ ] Binary reproducible builds
-
----
-
-## Milestone 8 — Developer Experience (ongoing)
-
-Make contributing easy and enjoyable.
-
-- [ ] Contribution guide (CONTRIBUTING.md)
-- [ ] Developer documentation (docs/ directory)
-- [ ] Pre-commit hooks (clang-format, clang-tidy)
-- [ ] `docker-compose` development environment
-- [ ] VSCode devcontainer configuration
-- [ ] Changelog automation (conventional commits)
-
----
-
-## Future / Under Discussion
-
-Ideas that are not yet scheduled for a specific milestone.
-
-- Lightning Network channel support
-- REST/gRPC control API
-- BIP-340 Schnorr signature support
-- Taproot / Tapscript
-- Mobile-friendly light client mode (SPV)
-- GUI wallet front-end
-
----
-
-*Last updated: 2026-03-29*
-
-> To propose changes to this roadmap, open a GitHub issue with the
-> **roadmap** label.
+**Build openly. Verify carefully. Keep moving forward.**
