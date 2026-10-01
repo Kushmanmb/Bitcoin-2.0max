@@ -1,0 +1,796 @@
+From c665fe24cf7f533a7e395f9939026f7477c5fbaa Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Thu, 1 Oct 2026 08:20:27 +0900
+Subject: [PATCH] Add isolated native coin regtest mining and issuance
+ validation
+
+---
+ CMakeLists.txt                  |  13 +++
+ NATIVE-REGTEST.md               | 100 +++++++++++++++++++++
+ README.md                       |   8 ++
+ include/bitcoin2max/params.h    |   3 +-
+ include/bitcoin2max/subsidy.h   |  32 +++++++
+ src/consensus/pow.cpp           |  36 ++++++++
+ src/consensus/pow.h             |  12 +++
+ src/consensus/regtest_chain.cpp | 144 +++++++++++++++++++++++++++++
+ src/consensus/regtest_chain.h   |  44 +++++++++
+ src/node/node.cpp               |   2 +-
+ src/tools/regtest_miner.cpp     |  95 ++++++++++++++++++++
+ tests/CMakeLists.txt            |   3 +
+ tests/test_native_consensus.cpp | 154 ++++++++++++++++++++++++++++++++
+ 13 files changed, 644 insertions(+), 2 deletions(-)
+ create mode 100644 NATIVE-REGTEST.md
+ create mode 100644 include/bitcoin2max/subsidy.h
+ create mode 100644 src/consensus/pow.cpp
+ create mode 100644 src/consensus/pow.h
+ create mode 100644 src/consensus/regtest_chain.cpp
+ create mode 100644 src/consensus/regtest_chain.h
+ create mode 100644 src/tools/regtest_miner.cpp
+ create mode 100644 tests/test_native_consensus.cpp
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c1d5004..c5827f4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -21,6 +21,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
+ # ── Options ───────────────────────────────────────────────────────────────────
+ option(BUILD_TESTS          "Build unit tests"                  ON)
+ option(BUILD_WALLET_DEMO    "Build wallet demo tool"            ON)
++option(BUILD_REGTEST_MINER  "Build isolated native-coin regtest harness" ON)
+ option(ENABLE_ELECTRUM      "Enable built-in Electrum client"   ON)
+ option(ENABLE_TOR           "Route Electrum traffic over Tor"   OFF)
+ option(ENABLE_ASAN          "Enable AddressSanitizer"           OFF)
+@@ -113,6 +114,18 @@ if(BUILD_WALLET_DEMO)
+ endif()
+ 
+ # ── Tests ─────────────────────────────────────────────────────────────────────
++if(BUILD_REGTEST_MINER)
++    add_executable(bitcoin2max_regtest
++        src/tools/regtest_miner.cpp
++        src/consensus/pow.cpp
++        src/consensus/regtest_chain.cpp
++        src/transaction/transaction.cpp
++    )
++    target_include_directories(bitcoin2max_regtest PRIVATE
++        ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
++    target_link_libraries(bitcoin2max_regtest PRIVATE OpenSSL::Crypto)
++endif()
++
+ if(BUILD_TESTS)
+     enable_testing()
+     add_subdirectory(tests)
+diff --git a/NATIVE-REGTEST.md b/NATIVE-REGTEST.md
+new file mode 100644
+index 0000000..440ceab
+--- /dev/null
++++ b/NATIVE-REGTEST.md
+@@ -0,0 +1,100 @@
++# Bitcoin2.0Max native coin: private regtest foundation
++
++This is the first executable milestone toward an independent native coin.
++`bitcoin2max_regtest` mines and validates a local, coinbase-only chain. It is
++separate from `bitcoin2maxd`, Electrum, Bitcoin mainnet, and the website.
++The existing daemon is still a networking/status framework, not a complete
++native-coin consensus node.
++
++## Build and run
++
++Use the repository's normal C++17, CMake and OpenSSL prerequisites:
++
++```bash
++cmake -S . -B build -DBUILD_TESTS=ON
++cmake --build build -j2
++ctest --test-dir build --output-on-failure
++
++# Create a private test chain and mine three blocks.
++./build/bitcoin2max_regtest /tmp/bitcoin2max-regtest.chain --mine 3
++
++# Restart: load and independently validate every saved block.
++./build/bitcoin2max_regtest /tmp/bitcoin2max-regtest.chain
++
++# Mine another 98 blocks: the first reward is now 100 blocks behind the tip.
++./build/bitcoin2max_regtest /tmp/bitcoin2max-regtest.chain --mine 98
++```
++
++A second process can validate a copy of the chain independently:
++
++```bash
++cp /tmp/bitcoin2max-regtest.chain /tmp/bitcoin2max-regtest-copy.chain
++./build/bitcoin2max_regtest /tmp/bitcoin2max-regtest-copy.chain
++```
++
++Both copies must report the same height, tip and issued amount. This proves
++deterministic offline replay; it does **not** implement P2P synchronization.
++Use a fresh path to reset the test chain. Corrupt or incomplete files fail
++validation instead of being silently reset. A file lock prevents concurrent
++instances from appending to the same path.
++
++## Provisional issuance rules
++
++| Rule | Private test chain |
++|---|---|
++| Units | 100,000,000 satoshis per coin |
++| Genesis allocation | Zero; deterministic private-network anchor |
++| Initial reward | 50 coins at height 1 |
++| First halving | Height 210,000; reward becomes 25 coins |
++| Later halvings | Every 210,000 blocks, rounded down to whole satoshis |
++| Supply bound | 21 million coins |
++| Reward age | 100 blocks behind the current tip for the mature-reward counter |
++| Proof of work | SHA256d; fixed, deliberately easy target `0x207fffff` |
++| Header timestamps | Genesis time plus 60 seconds per height |
++| Mining speed | On demand; no real-time pacing |
++| Harness limit | 100,000 blocks; at most 10,000 per command |
++
++The complete provisional schedule issues 20,999,949.9769 coins: the genesis
++reward is zero and each halving rounds down. The 21 million constant is a
++ceiling, not a promise that precisely 21 million coins will be issued.
++With actual one-minute blocks, 210,000 blocks would take approximately 146
++days. These monetary rules are a development proposal, not a launched network.
++
++Each test block contains one deterministic coinbase transaction. Its height is
++committed in the input script; its output uses the test-only `OP_TRUE` script.
++The header commits to that transaction and its parent hash. Validation checks
++the expected reward, height commitment, payout script, Merkle root, header
++parameters, proof of work and issuance bound before accepting the block.
++
++The on-disk format stores heights, nonces and displayed block hashes. Replay
++reconstructs the deterministic headers and coinbases and validates them. It is
++not a general block database or a compatible Bitcoin `blk*.dat` file.
++
++## What this milestone does not do
++
++- No spendable wallet, private keys, signed transfers or UTXO database.
++- No script interpreter, fees, mempool, forks, chainwork selection or reorgs.
++- No difficulty retargeting or production timestamp rules.
++- No P2P block relay, peer discovery or public testnet/mainnet deployment.
++- No Ethereum bridge or backing by Bitcoin or ETH.
++
++Issued and mature-reward counters are test-chain accounting, not wallet
++balances. The existing `BitcoinMaxWallet` starts with a hard-coded 10,000-coin
++demo balance; it is not connected to this chain and does not represent mined
++coins. No public coin has been launched by this change.
++
++## Remaining milestones
++
++1. Implement persistent UTXOs, signed transactions, script validation and
++   coinbase maturity enforcement at spend time.
++2. Add a wallet whose balance comes entirely from validated UTXOs.
++3. Implement peer block/transaction relay, cumulative-work chain selection,
++   rollback and replay across reorgs.
++4. Test two independent nodes mining and transferring matured rewards, including
++   invalid signatures, double spends, excess rewards, restarts and forks.
++5. Define separate public testnet/mainnet genesis blocks and network parameters,
++   implement difficulty adjustment, and review consensus/security before launch.
++
++Proof-of-work checks follow the target range and digest byte-order conventions
++used by [Bitcoin Core](https://github.com/bitcoin/bitcoin/blob/master/src/pow.cpp).
++This small harness is not a fork of Bitcoin Core's complete consensus engine.
+diff --git a/README.md b/README.md
+index 8882f96..7871c02 100644
+--- a/README.md
++++ b/README.md
+@@ -11,6 +11,14 @@
+ 
+ ## Key Features
+ 
++### Native coin development status
++
++The daemon does not yet implement a complete native-coin ledger or mining
++network. An isolated `bitcoin2max_regtest` tool now mines and revalidates a
++private, coinbase-only proof-of-work chain with a provisional 50-coin reward.
++See [NATIVE-REGTEST.md](NATIVE-REGTEST.md) for build commands, issuance rules,
++limits, and the remaining wallet/consensus/network milestones.
++
+ | Feature | Value |
+ |---|---|
+ | Target block time | **60 seconds** (10× faster than legacy Bitcoin) |
+diff --git a/include/bitcoin2max/params.h b/include/bitcoin2max/params.h
+index aceb292..1d0bcec 100644
+--- a/include/bitcoin2max/params.h
++++ b/include/bitcoin2max/params.h
+@@ -3,7 +3,8 @@
+ #include <cstdint>
+ 
+ // ── Bitcoin 2.0max consensus parameters ──────────────────────────────────────
+-// All values can be overridden at runtime via bitcoin2max.conf.
++// Only settings exposed by Config have runtime overrides. Consensus constants
++// are not made configurable by this header.
+ 
+ namespace bitcoin2max {
+ namespace consensus {
+diff --git a/include/bitcoin2max/subsidy.h b/include/bitcoin2max/subsidy.h
+new file mode 100644
+index 0000000..0fe3aea
+--- /dev/null
++++ b/include/bitcoin2max/subsidy.h
+@@ -0,0 +1,32 @@
++#pragma once
++
++#include "bitcoin2max/params.h"
++#include <cstdint>
++
++namespace bitcoin2max::consensus {
++
++// Provisional native-coin monetary policy, used only by the isolated regtest
++// harness until a complete production consensus engine exists.
++inline constexpr uint64_t COIN = 100'000'000ULL;
++inline constexpr uint64_t INITIAL_SUBSIDY = 50ULL * COIN;
++inline constexpr uint64_t HALVING_INTERVAL = 210'000ULL;
++
++// Height zero is an unspendable, zero-allocation genesis anchor.
++constexpr uint64_t blockSubsidy(uint64_t height) {
++    if (height == 0) return 0;
++    const auto halvings = height / HALVING_INTERVAL;
++    return halvings >= 64 ? 0 : INITIAL_SUBSIDY >> halvings;
++}
++
++// Fees recycle existing money; only the subsidy counts as new issuance.
++constexpr bool validCoinbaseReward(uint64_t height, uint64_t reward,
++                                   uint64_t fees, uint64_t issued) {
++    if (issued > MAX_MONEY_SATOSHIS || fees > MAX_MONEY_SATOSHIS ||
++        reward > MAX_MONEY_SATOSHIS) return false;
++    const auto subsidy = blockSubsidy(height);
++    if (subsidy > MAX_MONEY_SATOSHIS - issued) return false;
++    // Both operands are bounded above by MAX_MONEY, well below UINT64_MAX.
++    return reward <= subsidy + fees;
++}
++
++} // namespace bitcoin2max::consensus
+diff --git a/src/consensus/pow.cpp b/src/consensus/pow.cpp
+new file mode 100644
+index 0000000..174cfcf
+--- /dev/null
++++ b/src/consensus/pow.cpp
+@@ -0,0 +1,36 @@
++#include "pow.h"
++
++#include <memory>
++#include <openssl/bn.h>
++
++namespace bitcoin2max::consensus {
++namespace {
++using BigNum = std::unique_ptr<BIGNUM, decltype(&BN_free)>;
++
++BigNum decodeTarget(uint32_t compact) {
++    BigNum target(BN_new(), BN_free);
++    if (!target) return target;
++    const uint32_t size = compact >> 24;
++    uint32_t word = compact & 0x007fffffu;
++    if (size <= 3) word >>= 8 * (3 - size);
++    const bool negative = word != 0 && (compact & 0x00800000u);
++    const bool overflow = word != 0 &&
++        (size > 34 || (word > 0xff && size > 33) ||
++         (word > 0xffff && size > 32));
++    if (negative || overflow || word == 0 || BN_set_word(target.get(), word) != 1)
++        return BigNum(nullptr, BN_free);
++    if (size > 3 && BN_lshift(target.get(), target.get(), 8 * (size - 3)) != 1)
++        return BigNum(nullptr, BN_free);
++    return target;
++}
++} // namespace
++
++bool checkProofOfWork(const crypto::Hash256& hash, uint32_t bits,
++                      uint32_t limitBits) {
++    const auto target = decodeTarget(bits);
++    const auto limit = decodeTarget(limitBits);
++    if (!target || !limit || BN_cmp(target.get(), limit.get()) > 0) return false;
++    BigNum value(BN_lebin2bn(hash.data(), hash.size(), nullptr), BN_free);
++    return value && BN_cmp(value.get(), target.get()) <= 0;
++}
++} // namespace bitcoin2max::consensus
+diff --git a/src/consensus/pow.h b/src/consensus/pow.h
+new file mode 100644
+index 0000000..c36bf70
+--- /dev/null
++++ b/src/consensus/pow.h
+@@ -0,0 +1,12 @@
++#pragma once
++
++#include "crypto/block_hash.h"
++
++namespace bitcoin2max::consensus {
++
++// Hash256 stores raw digest bytes. Bitcoin interprets these as a little-endian
++// integer for proof of work. The supplied limit is a compact target too.
++bool checkProofOfWork(const crypto::Hash256& hash, uint32_t bits,
++                      uint32_t limitBits);
++
++} // namespace bitcoin2max::consensus
+diff --git a/src/consensus/regtest_chain.cpp b/src/consensus/regtest_chain.cpp
+new file mode 100644
+index 0000000..2160e30
+--- /dev/null
++++ b/src/consensus/regtest_chain.cpp
+@@ -0,0 +1,144 @@
++#include "regtest_chain.h"
++#include "bitcoin2max/subsidy.h"
++#include "pow.h"
++
++#include <algorithm>
++#include <istream>
++#include <limits>
++#include <ostream>
++#include <sstream>
++#include <stdexcept>
++
++namespace bitcoin2max::regtest {
++namespace {
++std::vector<uint8_t> heightScript(uint64_t height) {
++    std::vector<uint8_t> number;
++    while (height) {
++        number.push_back(static_cast<uint8_t>(height));
++        height >>= 8;
++    }
++    if (!number.empty() && (number.back() & 0x80)) number.push_back(0);
++    std::vector<uint8_t> script{static_cast<uint8_t>(number.size())};
++    script.insert(script.end(), number.begin(), number.end());
++    const std::string marker = "B2MX regtest only";
++    script.push_back(static_cast<uint8_t>(marker.size()));
++    script.insert(script.end(), marker.begin(), marker.end());
++    return script;
++}
++
++uint64_t parseDecimal(const std::string& value) {
++    if (value.empty() || value.find_first_not_of("0123456789") != std::string::npos)
++        throw std::runtime_error("Non-decimal chain record field");
++    size_t used = 0;
++    const auto parsed = std::stoull(value, &used);
++    if (used != value.size()) throw std::runtime_error("Invalid chain record field");
++    return parsed;
++}
++} // namespace
++
++std::string displayHash(const crypto::Hash256& raw) {
++    auto reversed = raw;
++    std::reverse(reversed.begin(), reversed.end());
++    return crypto::toHex(reversed);
++}
++
++Block blockTemplate(uint64_t height, const crypto::Hash256& previous) {
++    if (height > MAX_TEST_HEIGHT) throw std::runtime_error("Regtest height limit exceeded");
++    Block block;
++    TxInput input;
++    input.prevIndex = std::numeric_limits<uint32_t>::max();
++    input.scriptSig = heightScript(height);
++    block.coinbase.inputs.push_back(input);
++    // OP_TRUE is a test-only payout script; there is no spend engine yet.
++    block.coinbase.outputs.push_back({consensus::blockSubsidy(height), {0x51}});
++    block.header.prevHash = previous;
++    block.header.merkleRoot = computeContentHash(block.coinbase);
++    block.header.time = GENESIS_TIME + static_cast<uint32_t>(height * 60);
++    block.header.bits = POW_BITS;
++    return block;
++}
++
++Block mineBlock(uint64_t height, const crypto::Hash256& previous) {
++    auto block = blockTemplate(height, previous);
++    for (uint64_t nonce = 0; nonce <= std::numeric_limits<uint32_t>::max(); ++nonce) {
++        block.header.nonce = static_cast<uint32_t>(nonce);
++        if (consensus::checkProofOfWork(crypto::computeBlockHash(block.header),
++                                      block.header.bits, POW_BITS)) return block;
++    }
++    throw std::runtime_error("Nonce space exhausted");
++}
++
++Chain::Chain() : tip_(crypto::computeBlockHash(blockTemplate(0, {}).header)) {
++    if (displayHash(tip_) != GENESIS_HASH ||
++        !consensus::checkProofOfWork(tip_, POW_BITS, POW_BITS))
++        throw std::runtime_error("Regtest genesis does not match the pinned network anchor");
++}
++
++ValidationResult Chain::append(const Block& block) {
++    if (height_ >= MAX_TEST_HEIGHT) return {false, "Regtest height limit exceeded"};
++    const auto next = height_ + 1;
++    const auto expected = blockTemplate(next, tip_);
++    if (block.header.prevHash != tip_) return {false, "Wrong previous block"};
++    if (block.header.version != expected.header.version ||
++        block.header.time != expected.header.time || block.header.bits != POW_BITS)
++        return {false, "Unexpected regtest header parameters"};
++    const auto txResult = validateTransaction(block.coinbase);
++    if (!txResult.valid) return txResult;
++    if (serializeTransaction(block.coinbase) != serializeTransaction(expected.coinbase))
++        return {false, "Unexpected coinbase: height, reward or payout script"};
++    if (block.header.merkleRoot != computeContentHash(block.coinbase))
++        return {false, "Wrong coinbase Merkle root"};
++    const auto reward = block.coinbase.outputs[0].valueSatoshis;
++    if (!consensus::validCoinbaseReward(next, reward, 0, issued_))
++        return {false, "Coinbase reward exceeds issuance limit"};
++    const auto hash = crypto::computeBlockHash(block.header);
++    if (!consensus::checkProofOfWork(hash, block.header.bits, POW_BITS))
++        return {false, "Invalid proof of work"};
++    tip_ = hash;
++    height_ = next;
++    issued_ += reward;
++    return {true, {}};
++}
++
++uint64_t Chain::matureRewards() const {
++    uint64_t total = 0;
++    if (height_ < consensus::COINBASE_MATURITY) return total;
++    for (uint64_t h = 1; h <= height_ - consensus::COINBASE_MATURITY; ++h)
++        total += consensus::blockSubsidy(h);
++    return total;
++}
++
++Chain Chain::load(std::istream& input) {
++    Chain chain;
++    std::string line;
++    if (!std::getline(input, line) || input.eof() || line != "B2MX-REGTEST-V1")
++        throw std::runtime_error("Missing regtest file identifier");
++    while (std::getline(input, line)) {
++        // Require newline-terminated records; fail closed on partial writes.
++        if (input.eof() || line.size() > 128)
++            throw std::runtime_error("Truncated or oversized chain record");
++        std::istringstream record(line);
++        std::string heightText, nonceText, hashText, extra;
++        if (!(record >> heightText >> nonceText >> hashText) || (record >> extra))
++            throw std::runtime_error("Malformed chain record");
++        const auto height = parseDecimal(heightText);
++        const auto nonce = parseDecimal(nonceText);
++        if (height != chain.height() + 1 || nonce > std::numeric_limits<uint32_t>::max())
++            throw std::runtime_error("Invalid chain record height or nonce");
++        auto block = blockTemplate(height, chain.tip());
++        block.header.nonce = static_cast<uint32_t>(nonce);
++        const auto result = chain.append(block);
++        if (!result.valid) throw std::runtime_error(result.error);
++        if (hashText != displayHash(chain.tip()))
++            throw std::runtime_error("Stored block hash mismatch");
++    }
++    if (input.bad()) throw std::runtime_error("Failed to read chain file");
++    return chain;
++}
++
++void Chain::writeRecord(std::ostream& output, uint64_t height, const Block& block) {
++    output << height << ' ' << block.header.nonce << ' '
++           << displayHash(crypto::computeBlockHash(block.header)) << '\n';
++    if (!output) throw std::runtime_error("Failed to write chain record");
++}
++} // namespace bitcoin2max::regtest
+diff --git a/src/consensus/regtest_chain.h b/src/consensus/regtest_chain.h
+new file mode 100644
+index 0000000..f63b8b5
+--- /dev/null
++++ b/src/consensus/regtest_chain.h
+@@ -0,0 +1,44 @@
++#pragma once
++
++#include "bitcoin2max/transaction.h"
++#include "crypto/block_hash.h"
++#include <iosfwd>
++
++namespace bitcoin2max::regtest {
++
++// These parameters never enter bitcoin2maxd or its public P2P protocol.
++inline constexpr uint32_t POW_BITS = 0x207fffffu;
++inline constexpr uint32_t GENESIS_TIME = 1790812800u;
++inline constexpr const char* GENESIS_HASH =
++    "7dbd3b9ed2b7d9f74a4113c7e9af353a2d2ba226d3e23daea312275b42b11863";
++inline constexpr uint64_t MAX_TEST_HEIGHT = 100'000;
++
++struct Block {
++    crypto::BlockHeader header;
++    Transaction coinbase;
++};
++
++Block blockTemplate(uint64_t height, const crypto::Hash256& previous);
++Block mineBlock(uint64_t height, const crypto::Hash256& previous);
++std::string displayHash(const crypto::Hash256& raw);
++
++// A linear, coinbase-only test chain. No spends, forks, fees, wallet, script
++// interpreter or network synchronization are implemented by this harness.
++class Chain {
++public:
++    Chain();
++    ValidationResult append(const Block& block);
++    uint64_t height() const { return height_; }
++    uint64_t issued() const { return issued_; }
++    const crypto::Hash256& tip() const { return tip_; }
++    uint64_t matureRewards() const;
++    static Chain load(std::istream& input);
++    static void writeRecord(std::ostream& output, uint64_t height,
++                            const Block& block);
++private:
++    uint64_t height_{0};
++    uint64_t issued_{0};
++    crypto::Hash256 tip_{};
++};
++
++} // namespace bitcoin2max::regtest
+diff --git a/src/node/node.cpp b/src/node/node.cpp
+index 5d1e5e7..a31ebfd 100644
+--- a/src/node/node.cpp
++++ b/src/node/node.cpp
+@@ -233,7 +233,7 @@ void Node::updateChainState() {
+         << "("
+         << header.size() / 2
+         << " bytes)"
+-        << "\sn";
++        << "\n";
+ }
+ 
+ // ── peerCount ─────────────────────────────────────────────────────────────────
+diff --git a/src/tools/regtest_miner.cpp b/src/tools/regtest_miner.cpp
+new file mode 100644
+index 0000000..a7159a6
+--- /dev/null
++++ b/src/tools/regtest_miner.cpp
+@@ -0,0 +1,95 @@
++#include "consensus/regtest_chain.h"
++
++#include <fcntl.h>
++#include <sys/file.h>
++#include <sys/stat.h>
++#include <unistd.h>
++
++#include <fstream>
++#include <iostream>
++#include <stdexcept>
++#include <string>
++
++namespace {
++class FileLock {
++public:
++    FileLock(const std::string& path, bool create) {
++        fd_ = ::open(path.c_str(), O_RDWR | O_NOFOLLOW | (create ? O_CREAT : 0), 0600);
++        if (fd_ < 0) throw std::runtime_error("Cannot open chain file");
++        struct stat status{};
++        if (::fstat(fd_, &status) != 0 || !S_ISREG(status.st_mode)) {
++            ::close(fd_);
++            throw std::runtime_error("Chain path must be a regular file");
++        }
++        if (::flock(fd_, LOCK_EX | LOCK_NB) != 0) {
++            ::close(fd_);
++            throw std::runtime_error("Chain file is in use by another process");
++        }
++    }
++    ~FileLock() { ::close(fd_); }
++    FileLock(const FileLock&) = delete;
++    FileLock& operator=(const FileLock&) = delete;
++    void sync() const {
++        if (::fsync(fd_) != 0) throw std::runtime_error("Cannot sync chain file");
++    }
++private:
++    int fd_{-1};
++};
++} // namespace
++
++int main(int argc, char** argv) {
++    try {
++        if (argc == 2 && std::string(argv[1]) == "--help") {
++            std::cout << "Private, coinbase-only regtest harness. No network or wallet.\n"
++                      << "Usage: bitcoin2max_regtest <chain-file> [--mine <1..10000>]\n"
++                      << "Without --mine, revalidate the saved chain.\n";
++            return 0;
++        }
++        if (argc != 2 && argc != 4) throw std::runtime_error("Use --help for usage");
++        uint64_t count = 0;
++        if (argc == 4) {
++            const std::string number = argv[3];
++            if (std::string(argv[2]) != "--mine" || number.empty() ||
++                number.find_first_not_of("0123456789") != std::string::npos)
++                throw std::runtime_error("Expected --mine followed by a positive integer");
++            count = std::stoull(number);
++            if (count == 0 || count > 10'000) throw std::runtime_error("Mine count must be 1..10000");
++        }
++        const std::string path = argv[1];
++        FileLock lock(path, count != 0);
++        std::ifstream input(path);
++        if (!input) throw std::runtime_error("Cannot read chain file");
++        // An empty file is initialized only by an explicit mining request.
++        const bool empty = input.peek() == std::ifstream::traits_type::eof();
++        if (empty && !count) throw std::runtime_error("Empty chain file; use --mine to initialize");
++        auto chain = empty ? bitcoin2max::regtest::Chain{} :
++                             bitcoin2max::regtest::Chain::load(input);
++        input.close();
++        if (count > bitcoin2max::regtest::MAX_TEST_HEIGHT - chain.height())
++            throw std::runtime_error("Requested mining exceeds regtest height limit");
++        if (count) {
++            std::ofstream output(path, std::ios::app);
++            if (!output) throw std::runtime_error("Cannot append to chain file");
++            if (empty) output << "B2MX-REGTEST-V1\n";
++            for (uint64_t i = 0; i < count; ++i) {
++                auto block = bitcoin2max::regtest::mineBlock(chain.height() + 1, chain.tip());
++                const auto result = chain.append(block);
++                if (!result.valid) throw std::runtime_error(result.error);
++                bitcoin2max::regtest::Chain::writeRecord(output, chain.height(), block);
++            }
++            output.flush();
++            if (!output) throw std::runtime_error("Cannot flush chain file");
++            lock.sync();
++        }
++        std::cout << "network=bitcoin2max-private-regtest\n"
++                  << "height=" << chain.height() << '\n'
++                  << "tip=" << bitcoin2max::regtest::displayHash(chain.tip()) << '\n'
++                  << "issued_satoshis=" << chain.issued() << '\n'
++                  << "mature_reward_satoshis=" << chain.matureRewards() << '\n'
++                  << "Test rewards only. Wallet spending and P2P sync are not implemented.\n";
++        return 0;
++    } catch (const std::exception& error) {
++        std::cerr << "Regtest error: " << error.what() << '\n';
++        return 1;
++    }
++}
+diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
+index 199967b..d8bbf98 100644
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -17,6 +17,7 @@ add_executable(bitcoin2max_tests
+     test_config.cpp
+     test_elliptic_curve.cpp
+     test_params.cpp
++    test_native_consensus.cpp
+     test_signature.cpp
+     test_transaction.cpp
+     test_wallet.cpp
+@@ -47,6 +48,8 @@ target_sources(bitcoin2max_tests
+         ${CMAKE_SOURCE_DIR}/src/node/node.cpp
+         ${CMAKE_SOURCE_DIR}/src/electrum/electrum_client.cpp
+         ${CMAKE_SOURCE_DIR}/src/config/config.cpp
++        ${CMAKE_SOURCE_DIR}/src/consensus/pow.cpp
++        ${CMAKE_SOURCE_DIR}/src/consensus/regtest_chain.cpp
+         ${CMAKE_SOURCE_DIR}/src/crypto/elliptic_curve.cpp
+         ${CMAKE_SOURCE_DIR}/src/crypto/signature.cpp
+         ${CMAKE_SOURCE_DIR}/src/net/message.cpp
+diff --git a/tests/test_native_consensus.cpp b/tests/test_native_consensus.cpp
+new file mode 100644
+index 0000000..40b992d
+--- /dev/null
++++ b/tests/test_native_consensus.cpp
+@@ -0,0 +1,154 @@
++#include <catch2/catch_test_macros.hpp>
++
++#include "bitcoin2max/subsidy.h"
++#include "consensus/pow.h"
++#include "consensus/regtest_chain.h"
++
++#include <limits>
++#include <sstream>
++
++using namespace bitcoin2max;
++
++TEST_CASE("Native subsidy halves, terminates and stays below the cap", "[native][subsidy]") {
++    REQUIRE(consensus::blockSubsidy(0) == 0);
++    REQUIRE(consensus::blockSubsidy(1) == 50 * consensus::COIN);
++    REQUIRE(consensus::blockSubsidy(209999) == 50 * consensus::COIN);
++    REQUIRE(consensus::blockSubsidy(210000) == 25 * consensus::COIN);
++    REQUIRE(consensus::blockSubsidy(420000) == 1250000000ULL);
++    REQUIRE(consensus::blockSubsidy(33 * consensus::HALVING_INTERVAL) == 0);
++    REQUIRE(consensus::blockSubsidy(64 * consensus::HALVING_INTERVAL) == 0);
++    REQUIRE(consensus::blockSubsidy(std::numeric_limits<uint64_t>::max()) == 0);
++    uint64_t sum = 0;
++    for (uint64_t epoch = 0; epoch < 64; ++epoch) {
++        const auto height = epoch * consensus::HALVING_INTERVAL;
++        const auto count = consensus::HALVING_INTERVAL - (epoch == 0 ? 1 : 0);
++        sum += count * consensus::blockSubsidy(height == 0 ? 1 : height);
++    }
++    REQUIRE(sum == 2099994997690000ULL);
++    REQUIRE(sum < consensus::MAX_MONEY_SATOSHIS);
++}
++
++TEST_CASE("Coinbase reward bounds reject excess money and overflow", "[native][subsidy]") {
++    constexpr auto reward = consensus::INITIAL_SUBSIDY;
++    REQUIRE(consensus::validCoinbaseReward(1, reward, 0, 0));
++    REQUIRE(consensus::validCoinbaseReward(1, reward + 100, 100, 0));
++    REQUIRE_FALSE(consensus::validCoinbaseReward(1, reward + 1, 0, 0));
++    REQUIRE_FALSE(consensus::validCoinbaseReward(1, reward, 0, consensus::MAX_MONEY_SATOSHIS));
++    REQUIRE_FALSE(consensus::validCoinbaseReward(1, reward, 0, std::numeric_limits<uint64_t>::max()));
++    REQUIRE_FALSE(consensus::validCoinbaseReward(1, reward, std::numeric_limits<uint64_t>::max(), 0));
++    REQUIRE_FALSE(consensus::validCoinbaseReward(1, std::numeric_limits<uint64_t>::max(), 0, 0));
++}
++
++TEST_CASE("Proof of work rejects invalid targets and honors little-endian boundary", "[native][pow]") {
++    crypto::Hash256 zero{};
++    REQUIRE(consensus::checkProofOfWork(zero, 0x207fffff, 0x207fffff));
++    for (const auto bad : {0u, 0x20800001u, 0x23000001u, 0x22000100u,
++                           0x21010000u, 0x01000001u, 0x2100ffffu}) {
++        REQUIRE_FALSE(consensus::checkProofOfWork(zero, bad, 0x207fffff));
++    }
++    crypto::Hash256 target{};
++    target[29] = 0xff;
++    target[30] = 0xff;
++    target[31] = 0x7f;
++    REQUIRE(consensus::checkProofOfWork(target, 0x207fffff, 0x207fffff));
++    target[0] = 1;
++    REQUIRE_FALSE(consensus::checkProofOfWork(target, 0x207fffff, 0x207fffff));
++    target.fill(0xff);
++    REQUIRE_FALSE(consensus::checkProofOfWork(target, 0x207fffff, 0x207fffff));
++}
++
++TEST_CASE("Bitcoin genesis proof of work uses the raw digest in correct order", "[native][pow]") {
++    // Conventional displayed genesis hash, reversed into raw digest order.
++    const std::string shown = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
++    crypto::Hash256 raw{};
++    for (size_t i = 0; i < 32; ++i)
++        raw[31 - i] = static_cast<uint8_t>(std::stoul(shown.substr(2 * i, 2), nullptr, 16));
++    REQUIRE(consensus::checkProofOfWork(raw, 0x1d00ffff, 0x1d00ffff));
++    REQUIRE_FALSE(consensus::checkProofOfWork(raw, 0x03000001, 0x1d00ffff));
++}
++
++TEST_CASE("Regtest genesis is deterministic and allocates no coins", "[native][regtest]") {
++    const auto genesis = regtest::mineBlock(0, {});
++    REQUIRE(genesis.coinbase.outputs[0].valueSatoshis == 0);
++    REQUIRE(consensus::checkProofOfWork(crypto::computeBlockHash(genesis.header),
++                                      genesis.header.bits, regtest::POW_BITS));
++    regtest::Chain first, second;
++    REQUIRE(first.tip() == second.tip());
++    REQUIRE(regtest::displayHash(first.tip()) == regtest::GENESIS_HASH);
++    REQUIRE(first.issued() == 0);
++}
++
++TEST_CASE("Regtest rejects altered blocks without mutating chain state", "[native][regtest]") {
++    regtest::Chain chain;
++    const auto oldTip = chain.tip();
++    const auto good = regtest::mineBlock(1, chain.tip());
++    SECTION("inflated reward") {
++        auto bad = good;
++        ++bad.coinbase.outputs[0].valueSatoshis;
++        bad.header.merkleRoot = computeContentHash(bad.coinbase);
++        REQUIRE_FALSE(chain.append(bad).valid);
++    }
++    SECTION("wrong parent") {
++        auto bad = good;
++        bad.header.prevHash[0] ^= 1;
++        REQUIRE_FALSE(chain.append(bad).valid);
++    }
++    SECTION("wrong Merkle root") {
++        auto bad = good;
++        bad.header.merkleRoot[0] ^= 1;
++        REQUIRE_FALSE(chain.append(bad).valid);
++    }
++    SECTION("different difficulty") {
++        auto bad = good;
++        bad.header.bits = 0x207ffffe;
++        REQUIRE_FALSE(chain.append(bad).valid);
++    }
++    SECTION("invalid nonce") {
++        auto bad = good;
++        while (consensus::checkProofOfWork(crypto::computeBlockHash(bad.header),
++                                          bad.header.bits, regtest::POW_BITS)) ++bad.header.nonce;
++        REQUIRE_FALSE(chain.append(bad).valid);
++    }
++    REQUIRE(chain.tip() == oldTip);
++    REQUIRE(chain.height() == 0);
++    REQUIRE(chain.issued() == 0);
++    REQUIRE(chain.append(good).valid);
++    REQUIRE_FALSE(chain.append(good).valid);
++}
++
++TEST_CASE("Saved regtest chain replays independently with reward maturity", "[native][regtest]") {
++    regtest::Chain chain;
++    std::stringstream file;
++    file << "B2MX-REGTEST-V1\n";
++    for (int i = 0; i < 101; ++i) {
++        const auto block = regtest::mineBlock(chain.height() + 1, chain.tip());
++        REQUIRE(chain.append(block).valid);
++        regtest::Chain::writeRecord(file, chain.height(), block);
++        if (chain.height() == 100) REQUIRE(chain.matureRewards() == 0);
++    }
++    REQUIRE(chain.matureRewards() == consensus::INITIAL_SUBSIDY);
++    const auto restored = regtest::Chain::load(file);
++    REQUIRE(restored.height() == chain.height());
++    REQUIRE(restored.tip() == chain.tip());
++    REQUIRE(restored.issued() == 101 * consensus::INITIAL_SUBSIDY);
++    REQUIRE(restored.matureRewards() == chain.matureRewards());
++}
++
++TEST_CASE("Regtest replay rejects corrupt and incomplete files", "[native][regtest]") {
++    regtest::Chain chain;
++    const auto block = regtest::mineBlock(1, chain.tip());
++    std::ostringstream good;
++    good << "B2MX-REGTEST-V1\n";
++    regtest::Chain::writeRecord(good, 1, block);
++    std::string text = good.str();
++    SECTION("wrong network") { text.replace(0, 4, "BTC!"); }
++    SECTION("truncated final record") { text.pop_back(); }
++    SECTION("truncated identifier") { text = "B2MX-REGTEST-V1"; }
++    SECTION("modified stored hash") { text[text.size() - 2] = 'z'; }
++    SECTION("negative height") { text.insert(text.find('\n') + 1, "-"); }
++    SECTION("duplicate height") { text += text.substr(text.find('\n') + 1); }
++    SECTION("oversized record") { text += std::string(129, '1') + '\n'; }
++    SECTION("nonce overflow") { text = "B2MX-REGTEST-V1\n1 4294967296 bad\n"; }
++    std::istringstream input(text);
++    REQUIRE_THROWS(regtest::Chain::load(input));
++}
+-- 
+2.51.1
+
