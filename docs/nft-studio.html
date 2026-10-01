@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0c1326">
+<title>NFT Studio | Bitcoin2.0Max + Ethereum</title>
+<link rel="stylesheet" href="nft-studio.css"><script src="nft-studio.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to studio</a>
+<header><a class="brand" href="index.html">Bitcoin2.0<span>Max</span> <small>+ Ethereum</small></a><nav aria-label="Studio navigation"><a href="dashboard.html">My dashboard</a><a href="#gallery">My gallery</a></nav></header>
+<main id="main">
+<p class="eyebrow">KSMB CREATOR SPACE / 01</p><h1>Your art.<br><em>Your signature.</em></h1>
+<p class="intro">Design a collectible, make it yours, and curate your own gallery.</p>
+<p class="notice">Creator preview · Artwork drafts stay in this browser, shared by anyone using it. They are not minted NFTs or account-synced assets. Export a backup to keep them.</p>
+<section class="studio" aria-label="Artwork designer">
+<form id="designer" class="panel">
+<h2>Create your next piece</h2>
+<label>Artwork name<input id="title" maxlength="36" value="Genesis / 001" required></label>
+<label>Creator signature<input id="creator" maxlength="28" value="Kushmanmb"></label>
+<label>Description<textarea id="description" maxlength="500" rows="3" placeholder="Tell the story behind this piece."></textarea></label>
+<div class="fields"><label>Intended network<select id="network"><option value="ethereum">Ethereum</option><option value="bitcoin">Bitcoin</option></select></label><label>Style<select id="style"><option value="orbit">Orbital</option><option value="grid">Neon grid</option><option value="gem">Prismatic</option></select></label></div>
+<div class="fields"><label>Accent<input id="accent" type="color" value="#bba0ff"></label><label>Background<input id="background" type="color" value="#10182b"></label></div>
+<label>Artwork variation<input id="variation" type="range" min="1" max="20" value="7"></label>
+<div class="actions"><button type="submit">Save draft to gallery</button><button type="button" id="download" class="secondary">Download SVG</button></div>
+<p id="status" role="status" aria-live="polite"></p>
+</form>
+<div class="preview panel"><img id="preview" alt="Live artwork preview" width="800" height="800"><div class="preview-label"><span>LIVE DESIGN PREVIEW</span><span id="networkLabel">ETHEREUM DRAFT</span></div></div>
+</section>
+<section class="network-options" aria-label="Publishing availability">
+<article class="panel"><span class="eyebrow">ETHEREUM</span><h2>Mint a collectible</h2><p>Publishing requires an NFT contract, durable artwork storage, and a wallet confirmation with gas fees.</p><button disabled>Minting not connected</button></article>
+<article class="panel"><span class="eyebrow">BITCOIN</span><h2>Create an inscription</h2><p>Publishing requires an inscription service, a compatible wallet, and a reviewed network-fee quote.</p><button disabled>Inscriptions not connected</button></article>
+<article class="panel"><span class="eyebrow">COLLECT & TRADE</span><h2>Share your creations</h2><p>Export artwork now. Verified ownership, public profiles, listings, and on-chain trading need the next integration stage.</p><button disabled>Trading not connected</button></article>
+</section>
+<section id="gallery"><div class="gallery-heading"><div><p class="eyebrow">YOUR CREATIVE SPACE</p><h2>My draft gallery <span id="count">0</span></h2></div><div class="actions"><button id="backup" class="secondary">Export backup</button><label class="import-label">Import backup<input id="import" type="file" accept="application/json,.json"></label></div></div><div id="items" class="gallery"></div></section>
+<footer>Bitcoin2.0Max + Ethereum · Built to create. Designed to belong.</footer>
+</main></body></html>
