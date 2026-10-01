@@ -1495,3 +1495,68 @@ if (liveBlocksTable) {
     if (!document.hidden) apply();
   });
 })();
+/* Navigation dropdown accessibility and dismissal */
+(() => {
+  "use strict";
+
+  const button = document.getElementById("navToggle");
+  const menu = document.getElementById("navLinks");
+
+  if (!button || !menu) return;
+  if (button.dataset.dropdownEnhanced === "true") return;
+
+  button.dataset.dropdownEnhanced = "true";
+  button.setAttribute("aria-controls", "navLinks");
+
+  function syncLabel() {
+    const open = menu.classList.contains("open");
+
+    button.classList.toggle("open", open);
+    button.setAttribute("aria-expanded", String(open));
+    button.setAttribute(
+      "aria-label",
+      open ? "Close navigation" : "Open navigation"
+    );
+  }
+
+  function closeMenu(returnFocus = false) {
+    menu.classList.remove("open");
+    syncLabel();
+
+    if (returnFocus) button.focus();
+  }
+
+  new MutationObserver(syncLabel).observe(menu, {
+    attributes: true,
+    attributeFilter: ["class"]
+  });
+
+  document.addEventListener("click", event => {
+    if (
+      !button.contains(event.target) &&
+      !menu.contains(event.target)
+    ) {
+      closeMenu();
+    }
+  });
+
+  document.addEventListener("keydown", event => {
+    if (
+      event.key === "Escape" &&
+      menu.classList.contains("open")
+    ) {
+      closeMenu(true);
+    }
+  });
+
+  document.addEventListener("focusin", event => {
+    if (
+      !button.contains(event.target) &&
+      !menu.contains(event.target)
+    ) {
+      closeMenu();
+    }
+  });
+
+  syncLabel();
+})();
