@@ -111,8 +111,12 @@
       </div>
     `;
 
-    main.prepend(section);
-    document.body.classList.add("network-search-ready");
+    const menuButton = document.getElementById("navToggle");
+
+if (!menuButton) return;
+
+menuButton.before(section);
+document.body.classList.remove("network-search-ready");
 
     const form = section.querySelector("form");
     const select = section.querySelector("select");
