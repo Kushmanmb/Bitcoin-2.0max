@@ -3000,3 +3000,360 @@ pre {
 #btcPriceBanner.btc-price-card {
   grid-column: 1 / -1;
 }
+/* Bitcoin2.0Max — gold, cyan and violet */
+
+:root {
+  --ksmb-gold: #ffc46b;
+  --ksmb-cyan: #67e8f9;
+  --ksmb-violet: #c4b5fd;
+  --ksmb-rose: #f9a8d4;
+  --ksmb-panel: #10182b;
+  --muted: #b0bdd2;
+}
+
+body {
+  background:
+    radial-gradient(
+      ellipse at 8% 4%,
+      rgba(255, 158, 57, .18),
+      transparent 35%
+    ),
+    radial-gradient(
+      ellipse at 92% 18%,
+      rgba(124, 92, 255, .22),
+      transparent 42%
+    ),
+    radial-gradient(
+      ellipse at 10% 65%,
+      rgba(34, 211, 238, .10),
+      transparent 38%
+    ),
+    #080e1d;
+}
+
+/* Navigation */
+
+.nav,
+.nav.scrolled {
+  background: rgba(12, 19, 38, .97);
+  border-color: rgba(103, 232, 249, .24);
+}
+
+.nav__links a:not(.btn):hover,
+.nav__links a:not(.btn):focus-visible {
+  color: var(--ksmb-cyan);
+  background: rgba(103, 232, 249, .10);
+}
+
+/* Hero */
+
+.hero h1 .accent {
+  color: var(--ksmb-violet);
+}
+
+.hero__grid {
+  background-image:
+    linear-gradient(
+      rgba(103, 232, 249, .09) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(196, 181, 253, .09) 1px,
+      transparent 1px
+    );
+}
+
+.hero__logo {
+  border-color: rgba(196, 181, 253, .5);
+
+  background: linear-gradient(
+    135deg,
+    rgba(255, 173, 67, .23),
+    rgba(124, 92, 255, .23),
+    rgba(34, 211, 238, .15)
+  );
+
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, .35),
+    0 0 42px rgba(124, 92, 255, .16);
+}
+
+.hero__stats {
+  background: linear-gradient(
+    110deg,
+    #211b2c,
+    #101f33
+  );
+
+  border-color: rgba(196, 181, 253, .3);
+}
+
+.stat:nth-child(1) .stat__value {
+  color: var(--ksmb-gold);
+}
+
+.stat:nth-child(2) .stat__value {
+  color: var(--ksmb-cyan);
+}
+
+.stat:nth-child(3) .stat__value {
+  color: var(--ksmb-violet);
+}
+
+.stat:nth-child(4) .stat__value {
+  color: var(--ksmb-rose);
+}
+
+/* Buttons */
+
+.btn--primary {
+  color: #161020;
+
+  background: linear-gradient(
+    120deg,
+    #ffd27d,
+    #ffad66
+  );
+
+  border-color: #ffc46b;
+
+  box-shadow:
+    0 6px 26px rgba(255, 173, 102, .22);
+}
+
+.btn--ghost {
+  color: #e1d9ff;
+  background: rgba(139, 92, 246, .14);
+  border-color: rgba(196, 181, 253, .45);
+}
+
+/* Section colors */
+
+.section {
+  --section-accent: var(--ksmb-gold);
+}
+
+#ethereumNetwork,
+#node {
+  --section-accent: var(--ksmb-violet);
+}
+
+#transactions,
+#catchfunds {
+  --section-accent: var(--ksmb-cyan);
+}
+
+.section__eyebrow {
+  color: var(--section-accent);
+}
+
+.section__title::after {
+  width: 80px;
+
+  background: linear-gradient(
+    90deg,
+    var(--section-accent),
+    var(--ksmb-rose)
+  );
+}
+
+.section--alt {
+  background: linear-gradient(
+    120deg,
+    rgba(39, 26, 65, .65),
+    rgba(12, 30, 48, .72)
+  );
+}
+
+/* Dashboard cards */
+
+.dashboard-card,
+.table-card,
+.node-panel,
+.tx-result,
+.step {
+  background: linear-gradient(
+    140deg,
+    #19233a,
+    var(--ksmb-panel)
+  );
+
+  border-color: #374563;
+}
+
+.dashboard-card {
+  --card-accent: var(--ksmb-gold);
+
+  border-top: 3px solid var(--card-accent);
+}
+
+.dashboard-card:nth-child(2) {
+  --card-accent: var(--ksmb-violet);
+}
+
+.dashboard-card:nth-child(3) {
+  --card-accent: var(--ksmb-cyan);
+}
+
+.dashboard-card:nth-child(4) {
+  --card-accent: var(--ksmb-rose);
+}
+
+.dashboard-card .card-icon {
+  color: var(--card-accent);
+  background: rgba(196, 181, 253, .10);
+  border-color: currentColor;
+}
+
+.dashboard-card::after {
+  background: var(--card-accent);
+  opacity: .12;
+}
+
+/* Keep existing red/green connection-status colors. */
+
+#ethereumNetwork .dashboard-value {
+  color: var(--ksmb-violet);
+}
+
+#ethereumNetwork .btn--primary {
+  background: linear-gradient(
+    120deg,
+    #ddd0ff,
+    #aebfff
+  );
+
+  border-color: #c4b5fd;
+}
+
+#ethereumNetwork a:not(.btn) {
+  color: var(--ksmb-violet);
+}
+
+/* Tables and search */
+
+.table-card th {
+  color: #d9e5ff;
+  background: #202d48;
+}
+
+.tx-search {
+  background: #101c30;
+  border-color: rgba(103, 232, 249, .45);
+}
+
+.tx-search:focus-within {
+  border-color: var(--ksmb-cyan);
+
+  box-shadow:
+    0 0 0 3px rgba(103, 232, 249, .16);
+}
+
+.node-panel__header {
+  background: linear-gradient(
+    110deg,
+    rgba(139, 92, 246, .17),
+    rgba(34, 211, 238, .06)
+  );
+}
+
+.step:nth-child(even) .step__number {
+  color: var(--ksmb-cyan);
+  background: rgba(34, 211, 238, .08);
+}
+
+/* CatchFunds network colors */
+
+.catchfunds-card--btc {
+  background: linear-gradient(
+    140deg,
+    #302217,
+    #131a29
+  );
+}
+
+.catchfunds-card--bch {
+  background: linear-gradient(
+    140deg,
+    #11332d,
+    #131a29
+  );
+}
+
+.catchfunds-card--xlm {
+  background: linear-gradient(
+    140deg,
+    #132e4a,
+    #131a29
+  );
+}
+
+.catchfunds-card--evm {
+  background: linear-gradient(
+    140deg,
+    #302047,
+    #131a29
+  );
+}
+
+/* Price banner and footer */
+
+.btc-banner {
+  background: linear-gradient(
+    110deg,
+    #332319,
+    #191b34 65%,
+    #112b37
+  );
+
+  border-bottom-color:
+    rgba(255, 196, 107, .5);
+}
+
+.footer {
+  background: linear-gradient(
+    120deg,
+    #141327,
+    #0b2030
+  );
+
+  border-top-color:
+    rgba(103, 232, 249, .3);
+}
+
+.footer__links a:hover {
+  color: var(--ksmb-cyan);
+}
+
+.theme-control select {
+  color: #edf2ff;
+  background: #1b2540;
+  border: 1px solid #7185ae;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+:focus-visible {
+  outline-color: var(--ksmb-cyan);
+}
+
+/* October theme */
+
+.halloween-theme .dashboard-card {
+  border-top-color: var(--card-accent);
+}
+
+/* Mobile and hover */
+
+@media (max-width: 760px) {
+  .nav__links {
+    background: #0c1326;
+  }
+}
+
+@media (hover: hover) {
+  .dashboard-card:hover {
+    border-color: var(--card-accent);
+  }
+}
