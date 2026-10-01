@@ -3782,3 +3782,160 @@ body {
     font-size: 44px;
   }
 }
+/* Search inside the top banner, beside Menu */
+
+.nav__inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav__logo {
+  flex-shrink: 0;
+}
+
+.nav #networkSearch {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  max-width: 620px;
+
+  width: auto;
+  margin: 0 0 0 auto;
+  padding: 0;
+}
+
+.nav .network-search-box {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.nav .network-search-heading,
+.nav #networkSearchHelp {
+  display: none;
+}
+
+.nav #networkSearchForm {
+  display: grid;
+  grid-template-columns: 115px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Keep label text available to screen readers. */
+.nav #networkSearchForm label {
+  font-size: 0;
+}
+
+.nav #networkSearchForm input,
+.nav #networkSearchForm select {
+  min-height: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 8px 10px;
+  font-size: .78rem;
+  border-radius: 9px;
+}
+
+.nav #networkSearchForm button {
+  min-height: 40px;
+  height: 40px;
+  padding: 8px 12px;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
+.nav #navToggle {
+  flex-shrink: 0;
+}
+
+/* Expand results below the banner without moving it. */
+.nav #networkSearchStatus:not(:empty) {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 5;
+
+  width: min(420px, calc(100vw - 32px));
+  margin: 0;
+  padding: 14px 16px;
+
+  color: #dce6f8;
+  background: #10182b;
+  border: 1px solid #536687;
+  border-radius: 12px;
+
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .35);
+}
+
+/* The result link follows the status inside this panel. */
+.nav #networkSearchResult:not([hidden]) {
+  position: relative;
+  display: block;
+  margin: 10px 0 0;
+}
+
+/* Compact two-row banner on smaller screens:
+   brand above, search immediately left of Menu. */
+@media (max-width: 1100px) {
+  :root {
+    --nav-height: 116px;
+  }
+
+  .nav__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .nav__logo {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .nav #networkSearch {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .nav #navToggle {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .nav #networkSearchForm {
+    grid-template-columns: 85px minmax(0, 1fr) auto;
+    gap: 4px;
+  }
+
+  .nav #networkSearchForm input,
+  .nav #networkSearchForm select {
+    padding-inline: 6px;
+    font-size: .72rem;
+  }
+
+  .nav #networkSearchForm button {
+    padding-inline: 8px;
+    font-size: .72rem;
+  }
+
+  .nav #navToggle {
+    min-width: 66px;
+    padding-inline: 8px;
+    font-size: .78rem;
+  }
+
+  .nav #networkSearchStatus:not(:empty) {
+    left: 0;
+    right: auto;
+  }
+}
