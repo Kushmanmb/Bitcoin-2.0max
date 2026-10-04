@@ -17,7 +17,7 @@
 
   const CONFIG = {
     // We will change this when our real API is running.
-    apiBaseUrl: "",
+    apiBaseUrl: "http://127.0.0.1:8080",
 
     refreshInterval: 15000
   };
@@ -357,7 +357,7 @@
 
     const height =
       formatNumber(
-        data.blockheight
+        data.blockHeight
       );
 
 

@@ -176,6 +176,7 @@ void HttpServer::run() {
             const std::string response =
                 "HTTP/1.1 " + status + "\r\n"
                 "Content-Type: application/json\r\n"
+                "Access-Control-Allow-Origin: https://kushmanmb.github.io\r\n"
                 "Cache-Control: no-store\r\n"
                 "Connection: close\r\n"
                 "Content-Length: " +
