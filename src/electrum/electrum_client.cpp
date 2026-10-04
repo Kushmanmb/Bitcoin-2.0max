@@ -6,6 +6,10 @@
 #include "electrum_client.h"
 #include "../platform/socket_compat.h"
 
+#ifndef _WIN32
+#include <netdb.h>
+#endif
+
 #include <cerrno>
 #include <cstring>
 #include <iostream>
@@ -295,3 +299,4 @@ std::string ElectrumClient::broadcastTransaction(const std::string &rawTxHex) {
 }
 
 } // namespace bitcoin2max
+
