@@ -15,29 +15,44 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-# Compiler flags for optimised release build
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
+# Compiler flags for optimized release builds
+if(MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
+else()
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
+endif()
 
 # ── Options ───────────────────────────────────────────────────────────────────
-option(BUILD_TESTS          "Build unit tests"                  ON)
-option(BUILD_WALLET_DEMO    "Build wallet demo tool"            ON)
+option(BUILD_TESTS          "Build unit tests"                         ON)
+option(BUILD_WALLET_DEMO    "Build wallet demo tool"                   ON)
 option(BUILD_REGTEST_MINER  "Build isolated native-coin regtest harness" ON)
-option(ENABLE_ELECTRUM      "Enable built-in Electrum client"   ON)
-option(ENABLE_TOR           "Route Electrum traffic over Tor"   OFF)
-option(ENABLE_ASAN          "Enable AddressSanitizer"           OFF)
+option(ENABLE_ELECTRUM      "Enable built-in Electrum client"          ON)
+option(ENABLE_TOR           "Route Electrum traffic over Tor"          OFF)
+option(ENABLE_ASAN          "Enable AddressSanitizer"                  OFF)
 
-# AddressSanitizer support (pass -DENABLE_ASAN=ON to cmake to activate)
+# AddressSanitizer support
 if(ENABLE_ASAN)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+    if(MSVC)
+        add_compile_options(/fsanitize=address)
+    else()
+        set(CMAKE_CXX_FLAGS
+            "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer"
+        )
+        set(CMAKE_EXE_LINKER_FLAGS
+            "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address"
+        )
+    endif()
 endif()
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-# Optional: Boost (headers only for asio)
-cmake_policy(SET CMP0167 OLD)
+# Optional: Boost
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 OLD)
+endif()
+
 find_package(Boost 1.71 COMPONENTS system)
 
 # ── Source files ──────────────────────────────────────────────────────────────
@@ -56,7 +71,7 @@ set(BITCOIN2MAX_SOURCES
     src/transaction/transaction.cpp
 )
 
-# ── Executable ────────────────────────────────────────────────────────────────
+# ── Main executable ───────────────────────────────────────────────────────────
 add_executable(bitcoin2maxd ${BITCOIN2MAX_SOURCES})
 
 target_include_directories(bitcoin2maxd
@@ -72,6 +87,11 @@ target_link_libraries(bitcoin2maxd
         OpenSSL::SSL
         OpenSSL::Crypto
 )
+
+# Windows networking library
+if(WIN32)
+    target_link_libraries(bitcoin2maxd PRIVATE Ws2_32)
+endif()
 
 if(Boost_FOUND)
     target_include_directories(bitcoin2maxd PRIVATE ${Boost_INCLUDE_DIRS})
@@ -100,7 +120,9 @@ install(FILES conf/bitcoin2max.conf
 
 # ── Wallet demo tool ──────────────────────────────────────────────────────────
 if(BUILD_WALLET_DEMO)
-    add_executable(wallet_demo src/tools/wallet_demo.cpp)
+    add_executable(wallet_demo
+        src/tools/wallet_demo.cpp
+    )
 
     target_include_directories(wallet_demo
         PRIVATE
@@ -113,7 +135,7 @@ if(BUILD_WALLET_DEMO)
     )
 endif()
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# ── Regtest miner ─────────────────────────────────────────────────────────────
 if(BUILD_REGTEST_MINER)
     add_executable(bitcoin2max_regtest
         src/tools/regtest_miner.cpp
@@ -121,14 +143,32 @@ if(BUILD_REGTEST_MINER)
         src/consensus/regtest_chain.cpp
         src/transaction/transaction.cpp
     )
-    target_include_directories(bitcoin2max_regtest PRIVATE
-        ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
-    target_link_libraries(bitcoin2max_regtest PRIVATE OpenSSL::Crypto)
+
+    target_include_directories(bitcoin2max_regtest
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/src
+    )
+
+    target_link_libraries(bitcoin2max_regtest
+        PRIVATE
+            OpenSSL::Crypto
+    )
+
+    if(WIN32)
+        target_link_libraries(bitcoin2max_regtest PRIVATE Ws2_32)
+    endif()
 endif()
 
+# ── Tests ─────────────────────────────────────────────────────────────────────
 if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+# Windows socket support for tests
+if(WIN32 AND TARGET bitcoin2max_tests)
+    target_link_libraries(bitcoin2max_tests PRIVATE Ws2_32)
 endif()
 
 # ── Summary ───────────────────────────────────────────────────────────────────

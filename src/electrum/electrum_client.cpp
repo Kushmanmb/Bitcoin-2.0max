@@ -4,19 +4,13 @@
 // Connects to 127.0.0.1:9050 by default (local Electrum server).
 
 #include "electrum_client.h"
+#include "../platform/socket_compat.h"
 
-#include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
-#include <fcntl.h>
 #include <iostream>
-#include <netdb.h>
-#include <netinet/in.h>
 #include <sstream>
 #include <stdexcept>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 namespace bitcoin2max {
 
@@ -29,7 +23,7 @@ ElectrumClient::~ElectrumClient() { disconnect(); }
 
 ElectrumClient::ElectrumClient(ElectrumClient &&o) noexcept
     : cfg_(o.cfg_), fd_(o.fd_), nextId_(o.nextId_) {
-  o.fd_ = -1;
+  o.fd_ = INVALID_SOCKET_HANDLE;
 }
 
 ElectrumClient &ElectrumClient::operator=(ElectrumClient &&o) noexcept {
@@ -37,7 +31,7 @@ ElectrumClient &ElectrumClient::operator=(ElectrumClient &&o) noexcept {
     disconnect();
     fd_ = o.fd_;
     nextId_ = o.nextId_;
-    o.fd_ = -1;
+    o.fd_ = INVALID_SOCKET_HANDLE;
   }
   return *this;
 }
@@ -46,7 +40,7 @@ ElectrumClient &ElectrumClient::operator=(ElectrumClient &&o) noexcept {
 // ──────────────────────────────────────────────────────
 
 bool ElectrumClient::connect() {
-  if (fd_ >= 0)
+  if (socketValid(fd_))
     return true; // already connected
 
   const std::string &host = cfg_.electrum_host;
@@ -66,21 +60,21 @@ bool ElectrumClient::connect() {
     return false;
   }
 
-  int sock = -1;
+  SocketHandle sock = INVALID_SOCKET_HANDLE;
   for (auto *p = res; p != nullptr; p = p->ai_next) {
     sock = ::socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-    if (sock < 0)
+    if (!socketValid(sock))
       continue;
 
     if (::connect(sock, p->ai_addr, p->ai_addrlen) == 0)
       break;
 
-    ::close(sock);
-    sock = -1;
+    closeSocket(sock);
+    sock = INVALID_SOCKET_HANDLE;
   }
   freeaddrinfo(res);
 
-  if (sock < 0) {
+  if (!socketValid(sock)) {
     std::cerr << "[Electrum] Failed to connect to " << host << ":" << port
               << " — " << std::strerror(errno) << "\n";
     return false;
@@ -92,9 +86,9 @@ bool ElectrumClient::connect() {
 }
 
 void ElectrumClient::disconnect() {
-  if (fd_ >= 0) {
-    ::close(fd_);
-    fd_ = -1;
+  if (socketValid(fd_)) {
+    closeSocket(fd_);
+    fd_ = INVALID_SOCKET_HANDLE;
     std::cout << "[Electrum] Disconnected.\n";
   }
 }
@@ -103,14 +97,14 @@ void ElectrumClient::disconnect() {
 // ────────────────────────────────────────────────────
 
 std::string ElectrumClient::sendRequest(const std::string &json) {
-  if (fd_ < 0) {
+  if (!socketValid(fd_)) {
     std::cerr << "[Electrum] sendRequest: not connected.\n";
     return {};
   }
 
   // Electrum protocol: each message terminated by a newline.
   std::string msg = json + "\n";
-  ssize_t sent = ::send(fd_, msg.c_str(), msg.size(), 0);
+  int sent = ::send(fd_, msg.c_str(), static_cast<int>(msg.size()), SOCKET_SEND_FLAGS);
   if (sent < 0) {
     std::cerr << "[Electrum] send error: " << std::strerror(errno) << "\n";
     return {};
@@ -120,7 +114,7 @@ std::string ElectrumClient::sendRequest(const std::string &json) {
   std::string response;
   char buf[4096];
   while (true) {
-    ssize_t n = ::recv(fd_, buf, sizeof(buf) - 1, 0);
+    int n = ::recv(fd_, buf, static_cast<int>(sizeof(buf) - 1), 0);
     if (n <= 0) {
       if (n < 0)
         std::cerr << "[Electrum] recv error: " << std::strerror(errno) << "\n";

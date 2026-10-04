@@ -1,13 +1,11 @@
 #include "http_server.h"
 #include "status_api.h"
 #include "blocks_api.h"
-#include <arpa/inet.h>
+
 #include <cerrno>
 #include <cstring>
 #include <iostream>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include <string>
 
 namespace bitcoin2max {
 
@@ -26,63 +24,87 @@ HttpServer::~HttpServer() {
 
 bool HttpServer::start() {
     if (running_) return true;
+serverFd_ = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-    serverFd_ = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (serverFd_ < 0) {
-        std::cerr << "[HTTP] Unable to create socket: "
-                  << std::strerror(errno) << "\n";
+    if (!socketValid(serverFd_)) {
+        std::cerr << "[HTTP] Unable to create socket\n";
         return false;
     }
 
     int reuse = 1;
-    ::setsockopt(serverFd_, SOL_SOCKET, SO_REUSEADDR,
-                 &reuse, sizeof(reuse));
+
+#ifdef _WIN32
+    ::setsockopt(
+        serverFd_,
+        SOL_SOCKET,
+        SO_REUSEADDR,
+        reinterpret_cast<const char*>(&reuse),
+        sizeof(reuse)
+    );
+#else
+    ::setsockopt(
+        serverFd_,
+        SOL_SOCKET,
+        SO_REUSEADDR,
+        &reuse,
+        sizeof(reuse)
+    );
+#endif
 
     sockaddr_in address{};
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     address.sin_port = htons(port_);
 
-    if (::bind(serverFd_,
-               reinterpret_cast<sockaddr*>(&address),
-               sizeof(address)) < 0) {
+    if (::bind(
+            serverFd_,
+            reinterpret_cast<sockaddr*>(&address),
+            sizeof(address)
+        ) != 0) {
         std::cerr << "[HTTP] Unable to bind to 127.0.0.1:"
-                  << port_ << ": " << std::strerror(errno) << "\n";
-        ::close(serverFd_);
-        serverFd_ = -1;
+                  << port_ << "\n";
+
+        closeSocket(serverFd_);
+        serverFd_ = INVALID_SOCKET_HANDLE;
         return false;
     }
 
-    if (::listen(serverFd_, 16) < 0) {
-        std::cerr << "[HTTP] Unable to listen: "
-                  << std::strerror(errno) << "\n";
-        ::close(serverFd_);
-        serverFd_ = -1;
+    if (::listen(serverFd_, 16) != 0) {
+        std::cerr << "[HTTP] Unable to listen\n";
+
+        closeSocket(serverFd_);
+        serverFd_ = INVALID_SOCKET_HANDLE;
         return false;
     }
 
     running_ = true;
     thread_ = std::thread(&HttpServer::run, this);
 
-    std::cout << "[HTTP] Status API listening on http://127.0.0.1:"
-              << port_ << "/status\n";
+    std::cout
+        << "[HTTP] Status API listening on http://127.0.0.1:"
+        << port_
+        << "/status\n";
 
     return true;
 }
 
 void HttpServer::stop() {
     if (!running_.exchange(false)) {
-        if (thread_.joinable()) thread_.join();
+        if (thread_.joinable()) {
+            thread_.join();
+        }
         return;
     }
 
-    if (serverFd_ >= 0) {
-        ::shutdown(serverFd_, SHUT_RDWR);
-        ::close(serverFd_);
-        serverFd_ = -1;
+    if (socketValid(serverFd_)) {
+        shutdownSocket(serverFd_);
+        closeSocket(serverFd_);
+        serverFd_ = INVALID_SOCKET_HANDLE;
     }
 
-    if (thread_.joinable()) thread_.join();
+    if (thread_.joinable()) {
+        thread_.join();
+    }
 }
 
 bool HttpServer::isRunning() const {
@@ -92,103 +114,94 @@ bool HttpServer::isRunning() const {
 void HttpServer::run() {
     while (running_) {
         sockaddr_in clientAddress{};
-        socklen_t clientLength = sizeof(clientAddress);
 
-        int client = ::accept(
+#ifdef _WIN32
+        int clientLength = sizeof(clientAddress);
+#else
+        socklen_t clientLength = sizeof(clientAddress);
+#endif
+
+        SocketHandle client = ::accept(
             serverFd_,
             reinterpret_cast<sockaddr*>(&clientAddress),
             &clientLength
         );
 
-        if (client < 0) {
+        if (!socketValid(client)) {
             if (running_) {
-                std::cerr << "[HTTP] accept failed: "
-                          << std::strerror(errno) << "\n";
+                std::cerr << "[HTTP] accept failed\n";
             }
             continue;
         }
 
         char request[4096]{};
 
-        const ssize_t received =
-            ::recv(
-                client,
-                request,
-                sizeof(request) - 1,
-                0
-            );
+#ifdef _WIN32
+        const int received = ::recv(
+            client,
+            request,
+            static_cast<int>(sizeof(request) - 1),
+            0
+        );
+#else
+        const ssize_t received = ::recv(
+            client,
+            request,
+            sizeof(request) - 1,
+            0
+        );
+#endif
 
         if (received > 0) {
             request[received] = '\0';
 
             const std::string req(request);
 
+            std::string body;
+            std::string status;
+
             if (req.rfind("GET /status ", 0) == 0) {
-                const std::string body =
-                    statusApi_.getStatusJson();
-
-                const std::string response =
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: application/json\r\n"
-                    "Cache-Control: no-store\r\n"
-                    "Connection: close\r\n"
-                    "Content-Length: " +
-                    std::to_string(body.size()) +
-                    "\r\n\r\n" +
-                    body;
-
-                ::send(
-                    client,
-                    response.data(),
-                    response.size(),
-                    0
-                );
+                body = statusApi_.getStatusJson();
+                status = "200 OK";
             }
             else if (req.rfind("GET /blocks ", 0) == 0) {
-                const std::string body =
-                    blocksApi_.getBlocksJson();
-
-                const std::string response =
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: application/json\r\n"
-                    "Cache-Control: no-store\r\n"
-                    "Connection: close\r\n"
-                    "Content-Length: " +
-                    std::to_string(body.size()) +
-                    "\r\n\r\n" +
-                    body;
-
-                ::send(
-                    client,
-                    response.data(),
-                    response.size(),
-                    0
-                );
+                body = blocksApi_.getBlocksJson();
+                status = "200 OK";
             }
             else {
-                const std::string body =
-                    "{\"error\":\"not found\"}";
-
-                const std::string response =
-                    "HTTP/1.1 404 Not Found\r\n"
-                    "Content-Type: application/json\r\n"
-                    "Connection: close\r\n"
-                    "Content-Length: " +
-                    std::to_string(body.size()) +
-                    "\r\n\r\n" +
-                    body;
-
-                ::send(
-                    client,
-                    response.data(),
-                    response.size(),
-                    0
-                );
+                body = "{\"error\":\"not found\"}";
+                status = "404 Not Found";
             }
+
+            const std::string response =
+                "HTTP/1.1 " + status + "\r\n"
+                "Content-Type: application/json\r\n"
+                "Cache-Control: no-store\r\n"
+                "Connection: close\r\n"
+                "Content-Length: " +
+                std::to_string(body.size()) +
+                "\r\n\r\n" +
+                body;
+
+#ifdef _WIN32
+            ::send(
+                client,
+                response.data(),
+                static_cast<int>(response.size()),
+                0
+            );
+#else
+            ::send(
+                client,
+                response.data(),
+                response.size(),
+                0
+            );
+#endif
         }
 
-        ::shutdown(client, SHUT_RDWR);
-        ::close(client);
+        shutdownSocket(client);
+        closeSocket(client);
     }
 }
 

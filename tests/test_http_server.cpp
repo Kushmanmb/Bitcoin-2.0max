@@ -3,15 +3,12 @@
 #include "api/blocks_api.h"
 #include "config/config.h"
 #include "node/node.h"
+#include "platform/socket_compat.h"
 
-#include <arpa/inet.h>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
-#include <netinet/in.h>
 #include <string>
-#include <sys/socket.h>
 #include <thread>
-#include <unistd.h>
 
 TEST_CASE("HttpServer serves status endpoint") {
     bitcoin2max::Config config;
@@ -29,8 +26,8 @@ bitcoin2max::HttpServer server(
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    REQUIRE(fd >= 0);
+    bitcoin2max::SocketHandle fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    REQUIRE(bitcoin2max::socketValid(fd));
 
     sockaddr_in address{};
     address.sin_family = AF_INET;
@@ -52,15 +49,15 @@ bitcoin2max::HttpServer server(
     std::string response;
     char buffer[4096];
 
-    ssize_t count;
+    int count;
     while ((count = ::recv(fd, buffer, sizeof(buffer), 0)) > 0) {
         response.append(buffer, static_cast<std::size_t>(count));
     }
 
-    ::close(fd);
+    bitcoin2max::closeSocket(fd);
     // Test GET /blocks
-int blocksFd = ::socket(AF_INET, SOCK_STREAM, 0);
-REQUIRE(blocksFd >= 0);
+bitcoin2max::SocketHandle blocksFd = ::socket(AF_INET, SOCK_STREAM, 0);
+REQUIRE(bitcoin2max::socketValid(blocksFd));
 
 sockaddr_in blocksAddress{};
 blocksAddress.sin_family = AF_INET;
@@ -99,7 +96,7 @@ REQUIRE(
 std::string blocksResponse;
 char blocksBuffer[4096];
 
-ssize_t blocksCount;
+int blocksCount;
 
 while (
     (blocksCount = ::recv(
@@ -115,7 +112,7 @@ while (
     );
 }
 
-::close(blocksFd);
+bitcoin2max::closeSocket(blocksFd);
 
 REQUIRE(
     blocksResponse.find("HTTP/1.1 200 OK") !=

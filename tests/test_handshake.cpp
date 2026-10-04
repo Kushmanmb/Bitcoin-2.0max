@@ -1,185 +1,540 @@
 // tests/test_handshake.cpp
 //
 // Unit tests for the Bitcoin 2.0max P2P peer handshake protocol.
-//
-// Tests cover:
-//   • Message checksum computation
-//   • `verack` message construction and round-trip serialisation
-//   • `version` message construction and round-trip serialisation
-//   • Full opening handshake between two in-process Peer instances
-//     connected via socketpair(2)
 
 #include <catch2/catch_test_macros.hpp>
+
+#include "bitcoin2max/params.h"
 #include "net/message.h"
 #include "net/peer.h"
-#include "bitcoin2max/params.h"
+#include "platform/socket_compat.h"
 
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <cstring>
+#include <algorithm>
+#include <cstdint>
+#include <stdexcept>
+#include <string>
 #include <thread>
+#include <vector>
 
 using namespace bitcoin2max;
 using namespace bitcoin2max::net;
 
-// ── computeChecksum ───────────────────────────────────────────────────────────
+namespace {
 
-TEST_CASE("Checksum: empty payload returns known SHA256d value", "[handshake]") {
-    // SHA256(SHA256("")) is the well-known double-hash of an empty string.
-    // First four bytes = 5D F6 E0 E2
+struct SocketPair {
+    SocketHandle first{INVALID_SOCKET_HANDLE};
+    SocketHandle second{INVALID_SOCKET_HANDLE};
+};
+
+SocketPair createSocketPair() {
+    SocketHandle listener =
+        ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    if (!socketValid(listener)) {
+        throw std::runtime_error(
+            "Unable to create test listener"
+        );
+    }
+
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr =
+        htonl(INADDR_LOOPBACK);
+    address.sin_port = 0;
+
+    if (
+        ::bind(
+            listener,
+            reinterpret_cast<sockaddr*>(&address),
+            sizeof(address)
+        ) != 0
+    ) {
+        closeSocket(listener);
+
+        throw std::runtime_error(
+            "Unable to bind test listener"
+        );
+    }
+
+    if (::listen(listener, 1) != 0) {
+        closeSocket(listener);
+
+        throw std::runtime_error(
+            "Unable to listen on test socket"
+        );
+    }
+
+#ifdef _WIN32
+    int addressLength =
+        sizeof(address);
+#else
+    socklen_t addressLength =
+        sizeof(address);
+#endif
+
+    if (
+        ::getsockname(
+            listener,
+            reinterpret_cast<sockaddr*>(&address),
+            &addressLength
+        ) != 0
+    ) {
+        closeSocket(listener);
+
+        throw std::runtime_error(
+            "Unable to determine test socket port"
+        );
+    }
+
+    SocketHandle client =
+        ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    if (!socketValid(client)) {
+        closeSocket(listener);
+
+        throw std::runtime_error(
+            "Unable to create test client socket"
+        );
+    }
+
+    if (
+        ::connect(
+            client,
+            reinterpret_cast<sockaddr*>(&address),
+            sizeof(address)
+        ) != 0
+    ) {
+        closeSocket(client);
+        closeSocket(listener);
+
+        throw std::runtime_error(
+            "Unable to connect test socket"
+        );
+    }
+
+    SocketHandle server =
+        ::accept(
+            listener,
+            nullptr,
+            nullptr
+        );
+
+    closeSocket(listener);
+
+    if (!socketValid(server)) {
+        closeSocket(client);
+
+        throw std::runtime_error(
+            "Unable to accept test socket"
+        );
+    }
+
+    return {server, client};
+}
+
+} // namespace
+
+TEST_CASE(
+    "Checksum: empty payload returns known SHA256d value",
+    "[handshake]"
+) {
     std::vector<uint8_t> empty;
-    auto cs = computeChecksum(empty);
-    REQUIRE(cs[0] == 0x5D);
-    REQUIRE(cs[1] == 0xF6);
-    REQUIRE(cs[2] == 0xE0);
-    REQUIRE(cs[3] == 0xE2);
+
+    const auto checksum =
+        computeChecksum(empty);
+
+    REQUIRE(checksum[0] == 0x5D);
+    REQUIRE(checksum[1] == 0xF6);
+    REQUIRE(checksum[2] == 0xE0);
+    REQUIRE(checksum[3] == 0xE2);
 }
 
-TEST_CASE("Checksum: two calls with identical data produce identical result", "[handshake]") {
-    std::vector<uint8_t> data = {0x01, 0x02, 0x03};
-    REQUIRE(computeChecksum(data) == computeChecksum(data));
+TEST_CASE(
+    "Checksum: two calls with identical data produce identical result",
+    "[handshake]"
+) {
+    std::vector<uint8_t> data{
+        0x01,
+        0x02,
+        0x03
+    };
+
+    REQUIRE(
+        computeChecksum(data) ==
+        computeChecksum(data)
+    );
 }
 
-TEST_CASE("Checksum: different data produces different checksum", "[handshake]") {
-    std::vector<uint8_t> a = {0x00};
-    std::vector<uint8_t> b = {0x01};
-    REQUIRE(computeChecksum(a) != computeChecksum(b));
+TEST_CASE(
+    "Checksum: different data produces different checksum",
+    "[handshake]"
+) {
+    std::vector<uint8_t> a{0x00};
+    std::vector<uint8_t> b{0x01};
+
+    REQUIRE(
+        computeChecksum(a) !=
+        computeChecksum(b)
+    );
 }
 
-// ── verack message ────────────────────────────────────────────────────────────
+TEST_CASE(
+    "verack: command and payload are correct",
+    "[handshake]"
+) {
+    const auto message =
+        buildVerackMsg();
 
-TEST_CASE("verack: command and payload are correct", "[handshake]") {
-    auto msg = buildVerackMsg();
-    REQUIRE(msg.header.commandStr() == "verack");
-    REQUIRE(msg.header.magic        == network::MAGIC);
-    REQUIRE(msg.header.length       == 0u);
-    REQUIRE(msg.payload.empty());
+    REQUIRE(
+        message.header.commandStr() ==
+        "verack"
+    );
+
+    REQUIRE(
+        message.header.magic ==
+        network::MAGIC
+    );
+
+    REQUIRE(
+        message.header.length == 0u
+    );
+
+    REQUIRE(
+        message.payload.empty()
+    );
 }
 
-TEST_CASE("verack: serialise/deserialise round-trip", "[handshake]") {
-    auto original = buildVerackMsg();
-    auto wire     = original.serialise();
+TEST_CASE(
+    "verack: serialise/deserialise round-trip",
+    "[handshake]"
+) {
+    const auto original =
+        buildVerackMsg();
 
-    REQUIRE(wire.size() == MessageHeader::WIRE_SIZE); // header only, no payload
+    const auto wire =
+        original.serialise();
 
-    auto restored = NetMessage::deserialise(wire.data(), wire.size());
-    REQUIRE(restored.header.commandStr() == "verack");
-    REQUIRE(restored.header.magic        == network::MAGIC);
-    REQUIRE(restored.header.length       == 0u);
-    REQUIRE(restored.header.checksum     == original.header.checksum);
-    REQUIRE(restored.payload.empty());
+    REQUIRE(
+        wire.size() ==
+        MessageHeader::WIRE_SIZE
+    );
+
+    const auto restored =
+        NetMessage::deserialise(
+            wire.data(),
+            wire.size()
+        );
+
+    REQUIRE(
+        restored.header.commandStr() ==
+        "verack"
+    );
+
+    REQUIRE(
+        restored.header.magic ==
+        network::MAGIC
+    );
+
+    REQUIRE(
+        restored.header.length == 0u
+    );
+
+    REQUIRE(
+        restored.header.checksum ==
+        original.header.checksum
+    );
+
+    REQUIRE(
+        restored.payload.empty()
+    );
 }
 
-// ── version message ───────────────────────────────────────────────────────────
+TEST_CASE(
+    "version: command, magic, and non-empty payload",
+    "[handshake]"
+) {
+    const auto message =
+        buildVersionMsg(
+            100,
+            8333
+        );
 
-TEST_CASE("version: command, magic, and non-empty payload", "[handshake]") {
-    auto msg = buildVersionMsg(/*bestHeight=*/100, /*ourPort=*/8333);
-    REQUIRE(msg.header.commandStr() == "version");
-    REQUIRE(msg.header.magic        == network::MAGIC);
-    REQUIRE(msg.header.length       >  0u);
-    REQUIRE(msg.payload.size()      == msg.header.length);
+    REQUIRE(
+        message.header.commandStr() ==
+        "version"
+    );
+
+    REQUIRE(
+        message.header.magic ==
+        network::MAGIC
+    );
+
+    REQUIRE(
+        message.header.length > 0u
+    );
+
+    REQUIRE(
+        message.payload.size() ==
+        message.header.length
+    );
 }
 
-TEST_CASE("version: checksum matches payload", "[handshake]") {
-    auto msg = buildVersionMsg(42, 8333);
-    REQUIRE(msg.header.checksum == computeChecksum(msg.payload));
+TEST_CASE(
+    "version: checksum matches payload",
+    "[handshake]"
+) {
+    const auto message =
+        buildVersionMsg(
+            42,
+            8333
+        );
+
+    REQUIRE(
+        message.header.checksum ==
+        computeChecksum(
+            message.payload
+        )
+    );
 }
 
-TEST_CASE("version: serialise/deserialise round-trip", "[handshake]") {
-    auto original = buildVersionMsg(777, 8333);
-    auto wire     = original.serialise();
+TEST_CASE(
+    "version: serialise/deserialise round-trip",
+    "[handshake]"
+) {
+    const auto original =
+        buildVersionMsg(
+            777,
+            8333
+        );
 
-    REQUIRE(wire.size() == MessageHeader::WIRE_SIZE + original.payload.size());
+    const auto wire =
+        original.serialise();
 
-    auto restored = NetMessage::deserialise(wire.data(), wire.size());
-    REQUIRE(restored.header.commandStr() == "version");
-    REQUIRE(restored.header.magic        == network::MAGIC);
-    REQUIRE(restored.header.length       == original.header.length);
-    REQUIRE(restored.header.checksum     == original.header.checksum);
-    REQUIRE(restored.payload             == original.payload);
+    REQUIRE(
+        wire.size() ==
+        MessageHeader::WIRE_SIZE +
+            original.payload.size()
+    );
+
+    const auto restored =
+        NetMessage::deserialise(
+            wire.data(),
+            wire.size()
+        );
+
+    REQUIRE(
+        restored.header.commandStr() ==
+        "version"
+    );
+
+    REQUIRE(
+        restored.header.magic ==
+        network::MAGIC
+    );
+
+    REQUIRE(
+        restored.header.length ==
+        original.header.length
+    );
+
+    REQUIRE(
+        restored.header.checksum ==
+        original.header.checksum
+    );
+
+    REQUIRE(
+        restored.payload ==
+        original.payload
+    );
 }
 
-// ── MessageHeader round-trip ──────────────────────────────────────────────────
+TEST_CASE(
+    "MessageHeader: serialise/deserialise preserves all fields",
+    "[handshake]"
+) {
+    MessageHeader header;
 
-TEST_CASE("MessageHeader: serialise/deserialise preserves all fields", "[handshake]") {
-    MessageHeader hdr;
-    hdr.magic    = network::MAGIC;
-    hdr.command  = {};
-    std::copy("version", "version" + 7, hdr.command.begin());
-    hdr.length   = 0x1234u;
-    hdr.checksum = {0xAA, 0xBB, 0xCC, 0xDD};
+    header.magic =
+        network::MAGIC;
 
-    auto wire     = hdr.serialise();
-    REQUIRE(wire.size() == MessageHeader::WIRE_SIZE);
+    header.command = {};
 
-    auto restored = MessageHeader::deserialise(wire.data(), wire.size());
-    REQUIRE(restored.magic       == hdr.magic);
-    REQUIRE(restored.commandStr() == "version");
-    REQUIRE(restored.length      == 0x1234u);
-    REQUIRE(restored.checksum    == hdr.checksum);
+    std::copy(
+        "version",
+        "version" + 7,
+        header.command.begin()
+    );
+
+    header.length =
+        0x1234u;
+
+    header.checksum = {
+        0xAA,
+        0xBB,
+        0xCC,
+        0xDD
+    };
+
+    const auto wire =
+        header.serialise();
+
+    REQUIRE(
+        wire.size() ==
+        MessageHeader::WIRE_SIZE
+    );
+
+    const auto restored =
+        MessageHeader::deserialise(
+            wire.data(),
+            wire.size()
+        );
+
+    REQUIRE(
+        restored.magic ==
+        header.magic
+    );
+
+    REQUIRE(
+        restored.commandStr() ==
+        "version"
+    );
+
+    REQUIRE(
+        restored.length ==
+        0x1234u
+    );
+
+    REQUIRE(
+        restored.checksum ==
+        header.checksum
+    );
 }
 
-// ── Full handshake over socketpair ────────────────────────────────────────────
+TEST_CASE(
+    "Peer: full handshake completes over loopback sockets",
+    "[handshake]"
+) {
+    const SocketPair sockets =
+        createSocketPair();
 
-TEST_CASE("Peer: full handshake completes over socketpair", "[handshake]") {
-    int sv[2] = {-1, -1};
-    REQUIRE(::socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
+    bool serverOk = false;
+    bool serverComplete = false;
 
-    bool serverOk              = false;
-    bool serverComplete        = false;
     int32_t serverRemoteVersion = 0;
-    int32_t serverRemoteHeight  = 0;
+    int32_t serverRemoteHeight = 0;
 
-    // Run the inbound (server) side in a background thread.
-    std::thread serverThread([&]() {
-        Peer inbound(sv[0], /*outbound=*/false);
-        serverOk       = inbound.doHandshake(/*bestHeight=*/100, /*ourPort=*/8333);
-        serverComplete = inbound.isHandshakeComplete();
-        serverRemoteVersion = inbound.remoteVersion();
-        serverRemoteHeight  = inbound.remoteHeight();
-    });
+    std::thread serverThread(
+        [&]() {
+            Peer inbound(
+                sockets.first,
+                false
+            );
 
-    // Run the outbound (client) side on the main test thread.
-    Peer outbound(sv[1], /*outbound=*/true);
-    bool clientOk = outbound.doHandshake(/*bestHeight=*/200, /*ourPort=*/8333);
+            serverOk =
+                inbound.doHandshake(
+                    100,
+                    8333
+                );
+
+            serverComplete =
+                inbound.isHandshakeComplete();
+
+            serverRemoteVersion =
+                inbound.remoteVersion();
+
+            serverRemoteHeight =
+                inbound.remoteHeight();
+        }
+    );
+
+    Peer outbound(
+        sockets.second,
+        true
+    );
+
+    const bool clientOk =
+        outbound.doHandshake(
+            200,
+            8333
+        );
 
     serverThread.join();
 
-    // Both sides must report success.
     REQUIRE(clientOk);
     REQUIRE(serverOk);
 
-    // Both sides must be in COMPLETE state.
-    REQUIRE(outbound.isHandshakeComplete());
+    REQUIRE(
+        outbound.isHandshakeComplete()
+    );
+
     REQUIRE(serverComplete);
 
-    // Each side must have parsed the other's protocol version and height.
-    REQUIRE(outbound.remoteVersion() == network::PROTOCOL_VERSION);
-    REQUIRE(outbound.remoteHeight()  == 100); // server sent bestHeight=100
+    REQUIRE(
+        outbound.remoteVersion() ==
+        network::PROTOCOL_VERSION
+    );
 
-    REQUIRE(serverRemoteVersion == network::PROTOCOL_VERSION);
-    REQUIRE(serverRemoteHeight  == 200); // client sent bestHeight=200
+    REQUIRE(
+        outbound.remoteHeight() ==
+        100
+    );
+
+    REQUIRE(
+        serverRemoteVersion ==
+        network::PROTOCOL_VERSION
+    );
+
+    REQUIRE(
+        serverRemoteHeight ==
+        200
+    );
 }
 
-TEST_CASE("Peer: user-agent is correctly exchanged", "[handshake]") {
-    int sv[2] = {-1, -1};
-    REQUIRE(::socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
+TEST_CASE(
+    "Peer: user-agent is correctly exchanged",
+    "[handshake]"
+) {
+    const SocketPair sockets =
+        createSocketPair();
 
-    std::string serverUA;
+    std::string serverUserAgent;
 
-    std::thread serverThread([&]() {
-        Peer inbound(sv[0], false);
-        inbound.doHandshake(0, 8333);
-        serverUA = inbound.remoteUserAgent();
-    });
+    std::thread serverThread(
+        [&]() {
+            Peer inbound(
+                sockets.first,
+                false
+            );
 
-    Peer outbound(sv[1], true);
-    outbound.doHandshake(0, 8333);
+            inbound.doHandshake(
+                0,
+                8333
+            );
+
+            serverUserAgent =
+                inbound.remoteUserAgent();
+        }
+    );
+
+    Peer outbound(
+        sockets.second,
+        true
+    );
+
+    outbound.doHandshake(
+        0,
+        8333
+    );
 
     serverThread.join();
 
-    REQUIRE(outbound.remoteUserAgent() == network::USER_AGENT);
-    REQUIRE(serverUA                   == network::USER_AGENT);
+    REQUIRE(
+        outbound.remoteUserAgent() ==
+        network::USER_AGENT
+    );
+
+    REQUIRE(
+        serverUserAgent ==
+        network::USER_AGENT
+    );
 }

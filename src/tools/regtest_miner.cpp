@@ -1,9 +1,16 @@
 #include "consensus/regtest_chain.h"
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#else
 #include <fcntl.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 #include <fstream>
 #include <iostream>
@@ -14,26 +21,105 @@ namespace {
 class FileLock {
 public:
     FileLock(const std::string& path, bool create) {
-        fd_ = ::open(path.c_str(), O_RDWR | O_NOFOLLOW | (create ? O_CREAT : 0), 0600);
-        if (fd_ < 0) throw std::runtime_error("Cannot open chain file");
-        struct stat status{};
-        if (::fstat(fd_, &status) != 0 || !S_ISREG(status.st_mode)) {
-            ::close(fd_);
-            throw std::runtime_error("Chain path must be a regular file");
+#ifdef _WIN32
+        lockPath_ = path + ".lock";
+
+        handle_ = ::CreateFileA(
+            lockPath_.c_str(),
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            nullptr,
+            CREATE_NEW,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr
+        );
+
+        if (handle_ == INVALID_HANDLE_VALUE) {
+            throw std::runtime_error(
+                "Chain file is in use by another process"
+            );
         }
+
+        if (create) {
+            std::ofstream createFile(path, std::ios::app);
+            if (!createFile) {
+                ::CloseHandle(handle_);
+                handle_ = INVALID_HANDLE_VALUE;
+                ::DeleteFileA(lockPath_.c_str());
+                throw std::runtime_error("Cannot create chain file");
+            }
+            createFile.close();
+        }
+
+        if (!create) {
+            const DWORD attrs = ::GetFileAttributesA(path.c_str());
+            if (attrs == INVALID_FILE_ATTRIBUTES ||
+                (attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+                ::CloseHandle(handle_);
+                handle_ = INVALID_HANDLE_VALUE;
+                ::DeleteFileA(lockPath_.c_str());
+                throw std::runtime_error("Cannot open chain file");
+            }
+        }
+#else
+        fd_ = ::open(
+            path.c_str(),
+            O_RDWR | O_NOFOLLOW | (create ? O_CREAT : 0),
+            0600
+        );
+
+        if (fd_ < 0)
+            throw std::runtime_error("Cannot open chain file");
+
+        struct stat status{};
+        if (::fstat(fd_, &status) != 0 ||
+            !S_ISREG(status.st_mode)) {
+            ::close(fd_);
+            fd_ = -1;
+            throw std::runtime_error(
+                "Chain path must be a regular file"
+            );
+        }
+
         if (::flock(fd_, LOCK_EX | LOCK_NB) != 0) {
             ::close(fd_);
-            throw std::runtime_error("Chain file is in use by another process");
+            fd_ = -1;
+            throw std::runtime_error(
+                "Chain file is in use by another process"
+            );
         }
+#endif
     }
-    ~FileLock() { ::close(fd_); }
+
+    ~FileLock() {
+#ifdef _WIN32
+        if (handle_ != INVALID_HANDLE_VALUE) {
+            ::CloseHandle(handle_);
+            ::DeleteFileA(lockPath_.c_str());
+        }
+#else
+        if (fd_ >= 0)
+            ::close(fd_);
+#endif
+    }
+
     FileLock(const FileLock&) = delete;
     FileLock& operator=(const FileLock&) = delete;
+
     void sync() const {
-        if (::fsync(fd_) != 0) throw std::runtime_error("Cannot sync chain file");
+#ifndef _WIN32
+        if (::fsync(fd_) != 0)
+            throw std::runtime_error("Cannot sync chain file");
+#endif
     }
+
 private:
+#ifdef _WIN32
+    HANDLE handle_{INVALID_HANDLE_VALUE};
+    std::string lockPath_;
+#else
     int fd_{-1};
+#endif
 };
 } // namespace
 

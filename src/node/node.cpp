@@ -10,11 +10,7 @@
 #include "../electrum/electrum_client.h"
 #include "../net/peer.h"
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include "../platform/socket_compat.h"
 
 #include <cerrno>
 #include <chrono>
@@ -57,9 +53,10 @@ void Node::start() {
 void Node::stop() {
     running_.store(false);
     if (electrum_) electrum_->disconnect();
-    if (listenFd_ >= 0) {
-        ::close(listenFd_);
-        listenFd_ = -1;
+    if (socketValid(listenFd_)) {
+        shutdownSocket(listenFd_);
+        closeSocket(listenFd_);
+        listenFd_ = INVALID_SOCKET_HANDLE;
     }
 }
 
@@ -247,13 +244,13 @@ size_t Node::peerCount() const {
 
 bool Node::startListening() {
     listenFd_ = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (listenFd_ < 0) {
+    if (!socketValid(listenFd_)) {
         std::cerr << "[Node] socket(): " << std::strerror(errno) << "\n";
         return false;
     }
 
     int opt = 1;
-    ::setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    ::setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&opt), static_cast<int>(sizeof(opt)));
 
     sockaddr_in addr{};
     addr.sin_family      = AF_INET;
@@ -263,15 +260,15 @@ bool Node::startListening() {
     if (::bind(listenFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
         std::cerr << "[Node] bind() on port " << cfg_.p2p_port
                   << ": " << std::strerror(errno) << "\n";
-        ::close(listenFd_);
-        listenFd_ = -1;
+        closeSocket(listenFd_);
+        listenFd_ = INVALID_SOCKET_HANDLE;
         return false;
     }
 
     if (::listen(listenFd_, network::LISTEN_BACKLOG) < 0) {
         std::cerr << "[Node] listen(): " << std::strerror(errno) << "\n";
-        ::close(listenFd_);
-        listenFd_ = -1;
+        closeSocket(listenFd_);
+        listenFd_ = INVALID_SOCKET_HANDLE;
         return false;
     }
 
@@ -283,7 +280,7 @@ bool Node::startListening() {
 
 void Node::acceptLoop() {
     while (running_.load()) {
-        if (listenFd_ < 0) break;
+        if (!socketValid(listenFd_)) break;
 
         // Use select() with a 1-second timeout so we can check running_ and
         // react to stop() closing listenFd_.
@@ -296,11 +293,15 @@ void Node::acceptLoop() {
         if (r <= 0) continue;
 
         sockaddr_in peerAddr{};
-        socklen_t   addrLen = sizeof(peerAddr);
-        int peerFd = ::accept(listenFd_,
+        #ifdef _WIN32
+        int addrLen = sizeof(peerAddr);
+#else
+        socklen_t addrLen = sizeof(peerAddr);
+#endif
+        SocketHandle peerFd = ::accept(listenFd_,
                               reinterpret_cast<sockaddr*>(&peerAddr),
                               &addrLen);
-        if (peerFd < 0) {
+        if (!socketValid(peerFd)) {
             if (running_.load())
                 std::cerr << "[Node] accept(): " << std::strerror(errno) << "\n";
             continue;

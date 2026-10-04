@@ -90,7 +90,7 @@ TEST_CASE("parseEllipticCurve: secp256k1 cofactor is 1", "[elliptic_curve]") {
     REQUIRE(r.cofactor == 1u);
 }
 
-TEST_CASE("parseEllipticCurve: secp256k1 coefficient a is zero (y²=x³+7)", "[elliptic_curve]") {
+TEST_CASE("parseEllipticCurve: secp256k1 coefficient a is zero (y^2=x^3+7)", "[elliptic_curve]") {
     auto r = parseEllipticCurve("secp256k1");
     REQUIRE(r.valid);
     // secp256k1: a = 0

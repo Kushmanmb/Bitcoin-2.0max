@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../platform/socket_compat.h"
+
 #include <atomic>
 #include <cstdint>
 #include <thread>
@@ -34,7 +36,7 @@ private:
 
     uint16_t port_;
     std::atomic<bool> running_{false};
-    int serverFd_{-1};
+    SocketHandle serverFd_{INVALID_SOCKET_HANDLE};
     std::thread thread_;
 };
 

@@ -7,7 +7,13 @@
 #include <cstdio>
 #include <fstream>
 #include <string>
-#include <unistd.h>  // getpid()
+#include <filesystem>
+#ifdef _WIN32
+#include <process.h>
+#define getpid _getpid
+#else
+#include <unistd.h>
+#endif
 
 // Helper: write a temporary conf file and return its path.
 // Uses the process PID so parallel CTest invocations don't overwrite each
@@ -15,8 +21,8 @@
 // static counter starting at 0).
 static std::string writeTempConf(const std::string& content) {
     static int counter = 0;
-    std::string path = "/tmp/test_bitcoin2max_" + std::to_string(getpid())
-                       + "_" + std::to_string(counter++) + ".conf";
+    std::string path = (std::filesystem::temp_directory_path() / ("test_bitcoin2max_" + std::to_string(getpid())
+                       + "_" + std::to_string(counter++) + ".conf")).string();
     std::ofstream f(path);
     f << content;
     return path;

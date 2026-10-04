@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -61,12 +62,14 @@ static Transaction makeMinimalTx(uint32_t version = 1) {
 
 // Write a small .dat file to a temp path and return that path.
 static std::string writeTempDat(const std::string& content) {
-    std::string path = "/tmp/test_tx_" +
+    const auto path = std::filesystem::temp_directory_path() /
+                      ("test_tx_" +
                        std::to_string(reinterpret_cast<uintptr_t>(&content)) +
-                       ".dat";
+                       ".dat");
     std::ofstream f(path);
     f << content;
-    return path;
+    f.close();
+    return path.string();
 }
 
 // ── validateTransaction tests ─────────────────────────────────────────────────

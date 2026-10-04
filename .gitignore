@@ -97,3 +97,5 @@ temp/
 *.tmp
 *.bak
 *.cache
+
+vcpkg_installed/

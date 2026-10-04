@@ -5,6 +5,7 @@
 // transaction pool statistics and Electrum connectivity.
 
 #include "bitcoin2max/config.h"
+#include "../platform/socket_compat.h"
 
 #include <atomic>
 #include <cstdint>
@@ -125,7 +126,7 @@ private:
     // P2P NETWORK
     // =====================================================
 
-    int listenFd_{-1};
+    SocketHandle listenFd_{INVALID_SOCKET_HANDLE};
 
     std::vector<
         std::unique_ptr<net::Peer>
