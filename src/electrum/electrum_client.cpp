@@ -65,6 +65,7 @@ bool ElectrumClient::connect() {
   }
 
   SocketHandle sock = INVALID_SOCKET_HANDLE;
+  int lastSocketError = 0;
   for (auto *p = res; p != nullptr; p = p->ai_next) {
     sock = ::socket(p->ai_family, p->ai_socktype, p->ai_protocol);
     if (!socketValid(sock))
@@ -73,6 +74,7 @@ bool ElectrumClient::connect() {
     if (::connect(sock, p->ai_addr, p->ai_addrlen) == 0)
       break;
 
+    lastSocketError = socketLastError();
     closeSocket(sock);
     sock = INVALID_SOCKET_HANDLE;
   }
@@ -80,7 +82,7 @@ bool ElectrumClient::connect() {
 
   if (!socketValid(sock)) {
     std::cerr << "[Electrum] Failed to connect to " << host << ":" << port
-              << " — " << std::strerror(errno) << "\n";
+              << " - socket error " << lastSocketError << "\n";
     return false;
   }
 
@@ -110,7 +112,7 @@ std::string ElectrumClient::sendRequest(const std::string &json) {
   std::string msg = json + "\n";
   int sent = ::send(fd_, msg.c_str(), static_cast<int>(msg.size()), SOCKET_SEND_FLAGS);
   if (sent < 0) {
-    std::cerr << "[Electrum] send error: " << std::strerror(errno) << "\n";
+    std::cerr << "[Electrum] send error: " << socketLastError() << "\n";
     return {};
   }
 
@@ -121,7 +123,7 @@ std::string ElectrumClient::sendRequest(const std::string &json) {
     int n = ::recv(fd_, buf, static_cast<int>(sizeof(buf) - 1), 0);
     if (n <= 0) {
       if (n < 0)
-        std::cerr << "[Electrum] recv error: " << std::strerror(errno) << "\n";
+        std::cerr << "[Electrum] recv error: " << socketLastError() << "\n";
       break;
     }
     buf[n] = '\0';
@@ -299,4 +301,6 @@ std::string ElectrumClient::broadcastTransaction(const std::string &rawTxHex) {
 }
 
 } // namespace bitcoin2max
+
+
 
